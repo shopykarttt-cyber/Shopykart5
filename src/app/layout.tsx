@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'RubyGrocer - Premium Groceries Delivered',
+  title: 'Grosify - Freshness Delivered',
   description: 'Your premium modern grocery app for organic, fresh, and gourmet items.',
 };
 

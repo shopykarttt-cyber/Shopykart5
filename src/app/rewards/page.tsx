@@ -56,7 +56,7 @@ export default function RewardsPage() {
           <h3 className="font-bold text-xl">Active Offers</h3>
           <div className="space-y-4">
             {[
-              { title: "$10.00 Off", desc: "Minimum order of $50.00", code: "RUBY10" },
+              { title: "₹100 Off", desc: "Minimum order of ₹500", code: "GROSIFY100" },
               { title: "Free Delivery", desc: "On any fresh produce order", code: "FREESHIP" },
             ].map((coupon, i) => (
               <div key={i} className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-[2rem] p-6 flex justify-between items-center group hover:border-primary/50 transition-colors">

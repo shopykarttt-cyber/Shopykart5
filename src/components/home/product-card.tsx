@@ -39,7 +39,7 @@ export function ProductCard({ name, price, unit, imageId, discount }: ProductCar
         </div>
         <div className="flex justify-between items-center">
           <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold text-gray-900">${price.toFixed(2)}</span>
+            <span className="text-xl font-bold text-gray-900">₹{price.toFixed(0)}</span>
           </div>
           <Button size="icon" className="w-10 h-10 rounded-2xl bg-primary hover:bg-accent premium-shadow transition-all">
             <Plus className="w-5 h-5 text-white" />

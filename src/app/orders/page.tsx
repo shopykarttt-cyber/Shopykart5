@@ -6,9 +6,9 @@ import { TopBar } from "@/components/layout/top-bar";
 import { ShoppingBag, ChevronRight, Clock, Package } from "lucide-react";
 
 const ORDERS = [
-  { id: "ORD-9281", date: "Today, 2:30 PM", status: "Delivered", items: 12, total: 84.50 },
-  { id: "ORD-9120", date: "May 12, 2024", status: "Delivered", items: 5, total: 32.20 },
-  { id: "ORD-8992", date: "May 05, 2024", status: "Delivered", items: 8, total: 45.10 },
+  { id: "ORD-9281", date: "Today, 2:30 PM", status: "Delivered", items: 12, total: 3450 },
+  { id: "ORD-9120", date: "May 12, 2024", status: "Delivered", items: 5, total: 1220 },
+  { id: "ORD-8992", date: "May 05, 2024", status: "Delivered", items: 8, total: 2510 },
 ];
 
 export default function OrdersPage() {
@@ -49,7 +49,7 @@ export default function OrdersPage() {
                     <div>
                       <h4 className="font-bold text-gray-800">{order.id}</h4>
                       <p className="text-xs text-gray-500 font-medium">{order.date}</p>
-                      <p className="text-xs text-primary font-bold mt-1">${order.total.toFixed(2)} • {order.items} items</p>
+                      <p className="text-xs text-primary font-bold mt-1">₹{order.total.toFixed(0)} • {order.items} items</p>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-primary transition-colors" />

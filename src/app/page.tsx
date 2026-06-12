@@ -8,19 +8,21 @@ import { CategoryScroller } from "@/components/home/category-scroller";
 import { ProductCard } from "@/components/home/product-card";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { SplashScreen } from "@/components/ui/splash-screen";
 
 const POPULAR_PRODUCTS = [
-  { id: "p1", name: "Fairtrade Bananas", price: 2.99, unit: "1 kg", discount: "15%", imgId: "product-bananas" },
-  { id: "p2", name: "Organic Whole Milk", price: 4.50, unit: "1 L", imgId: "product-milk" },
-  { id: "p3", name: "Free Range Eggs", price: 5.25, unit: "12 pcs", discount: "10%", imgId: "product-eggs" },
-  { id: "p4", name: "Ripe Hass Avocados", price: 6.00, unit: "2 pcs", imgId: "product-avocado" },
-  { id: "p5", name: "Artisan Sourdough", price: 3.80, unit: "500 g", imgId: "product-bread" },
-  { id: "p6", name: "Specialty Cold Brew", price: 7.50, unit: "250 ml", imgId: "product-coffee" },
+  { id: "p1", name: "Fairtrade Bananas", price: 249, unit: "1 kg", discount: "15%", imgId: "product-bananas" },
+  { id: "p2", name: "Organic Whole Milk", price: 180, unit: "1 L", imgId: "product-milk" },
+  { id: "p3", name: "Free Range Eggs", price: 450, unit: "12 pcs", discount: "10%", imgId: "product-eggs" },
+  { id: "p4", name: "Ripe Hass Avocados", price: 899, unit: "2 pcs", imgId: "product-avocado" },
+  { id: "p5", name: "Artisan Sourdough", price: 320, unit: "500 g", imgId: "product-bread" },
+  { id: "p6", name: "Specialty Cold Brew", price: 550, unit: "250 ml", imgId: "product-coffee" },
 ];
 
 export default function Home() {
   return (
     <>
+      <SplashScreen />
       <TopBar />
       <div className="flex-1 space-y-2">
         <BannerSlider />
