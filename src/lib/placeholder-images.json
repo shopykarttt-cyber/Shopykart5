@@ -1,3 +1,82 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-banner-1",
+      "description": "Fresh grocery delivery concept",
+      "imageUrl": "https://picsum.photos/seed/grocery1/1200/600",
+      "imageHint": "fresh groceries delivery"
+    },
+    {
+      "id": "hero-banner-2",
+      "description": "Seasonal organic fruits",
+      "imageUrl": "https://picsum.photos/seed/fruits/1200/600",
+      "imageHint": "organic fruits"
+    },
+    {
+      "id": "hero-banner-3",
+      "description": "Gourmet bakery selection",
+      "imageUrl": "https://picsum.photos/seed/bakery/1200/600",
+      "imageHint": "gourmet bakery"
+    },
+    {
+      "id": "category-fruits",
+      "description": "Fruits category",
+      "imageUrl": "https://picsum.photos/seed/category1/200/200",
+      "imageHint": "fresh fruits"
+    },
+    {
+      "id": "category-veggies",
+      "description": "Vegetables category",
+      "imageUrl": "https://picsum.photos/seed/category2/200/200",
+      "imageHint": "vegetables"
+    },
+    {
+      "id": "category-dairy",
+      "description": "Dairy category",
+      "imageUrl": "https://picsum.photos/seed/category3/200/200",
+      "imageHint": "dairy products"
+    },
+    {
+      "id": "category-bakery",
+      "description": "Bakery category",
+      "imageUrl": "https://picsum.photos/seed/category4/200/200",
+      "imageHint": "bread bakery"
+    },
+    {
+      "id": "product-milk",
+      "description": "Organic Whole Milk",
+      "imageUrl": "https://picsum.photos/seed/milk/400/400",
+      "imageHint": "milk bottle"
+    },
+    {
+      "id": "product-bananas",
+      "description": "Fairtrade Bananas",
+      "imageUrl": "https://picsum.photos/seed/bananas/400/400",
+      "imageHint": "bananas"
+    },
+    {
+      "id": "product-bread",
+      "description": "Artisan Sourdough",
+      "imageUrl": "https://picsum.photos/seed/bread/400/400",
+      "imageHint": "sourdough bread"
+    },
+    {
+      "id": "product-avocado",
+      "description": "Ripe Hass Avocados",
+      "imageUrl": "https://picsum.photos/seed/avocado/400/400",
+      "imageHint": "avocado"
+    },
+    {
+      "id": "product-eggs",
+      "description": "Free Range Eggs",
+      "imageUrl": "https://picsum.photos/seed/eggs/400/400",
+      "imageHint": "eggs box"
+    },
+    {
+      "id": "product-coffee",
+      "description": "Specialty Cold Brew",
+      "imageUrl": "https://picsum.photos/seed/coffee/400/400",
+      "imageHint": "cold brew coffee"
+    }
+  ]
 }
