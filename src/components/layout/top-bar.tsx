@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { MapPin, Search, Bell, ShoppingBag, ChevronDown, Camera, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/hooks/use-toast";
 
 export function TopBar() {
   const router = useRouter();
@@ -14,21 +13,12 @@ export function TopBar() {
 
   const handleLogoClick = () => {
     const nextClicks = logoClicks + 1;
-    setLogoClicks(nextClicks);
     
     if (nextClicks === 5) {
-      toast({
-        title: "Admin Mode",
-        description: "Redirecting to admin panel...",
-      });
       router.push("/admin");
       setLogoClicks(0);
-    } else if (nextClicks > 2) {
-      // Small feedback for secret click
-      toast({
-        title: "Developer Note",
-        description: `${5 - nextClicks} more clicks to admin...`,
-      });
+    } else {
+      setLogoClicks(nextClicks);
     }
   };
 
