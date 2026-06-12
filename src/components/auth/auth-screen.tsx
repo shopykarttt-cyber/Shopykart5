@@ -5,28 +5,36 @@ import { useState } from "react";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  sendEmailVerification,
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
-import { useAuth } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { ShoppingBasket, Mail, Lock, User, Chrome, ArrowRight, Loader2 } from "lucide-react";
+import { ShoppingBasket, Mail, Lock, User, Phone, Chrome, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 export function AuthScreen() {
   const auth = useAuth();
+  const db = useFirestore();
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isLogin && password !== confirmPassword) {
+      toast({ variant: "destructive", title: "Passwords mismatch", description: "Password and Confirm Password must be same." });
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
@@ -34,12 +42,23 @@ export function AuthScreen() {
         toast({ title: "Welcome back!", description: "Successfully logged in." });
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCredential.user, { displayName: name });
-        await sendEmailVerification(userCredential.user);
-        toast({ 
-          title: "Account created!", 
-          description: "A verification email has been sent to your inbox." 
+        const user = userCredential.user;
+        
+        await updateProfile(user, { displayName: name });
+        
+        // Save customer details to Firestore for Admin Panel
+        const customerRef = doc(db, "customers", user.uid);
+        setDoc(customerRef, {
+          name: name,
+          email: email,
+          phone: phoneNumber,
+          joinedAt: new Date().toISOString(),
+          totalOrders: 0,
+          totalSpent: 0,
+          uid: user.uid
         });
+
+        toast({ title: "Account created!", description: "Welcome to Grosify!" });
       }
     } catch (error: any) {
       toast({ 
@@ -55,7 +74,21 @@ export function AuthScreen() {
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Also save Google users to customers collection if they don't exist
+      const customerRef = doc(db, "customers", user.uid);
+      setDoc(customerRef, {
+        name: user.displayName || "Google User",
+        email: user.email,
+        phone: user.phoneNumber || "",
+        joinedAt: new Date().toISOString(),
+        totalOrders: 0,
+        totalSpent: 0,
+        uid: user.uid
+      }, { merge: true });
+
     } catch (error: any) {
       toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });
     }
@@ -68,26 +101,38 @@ export function AuthScreen() {
           <div className="bg-primary/10 w-20 h-20 rounded-[2.5rem] flex items-center justify-center mx-auto mb-6">
             <ShoppingBasket className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-4xl font-black tracking-tighter italic uppercase">
+          <h1 className="text-4xl font-black tracking-tighter italic uppercase leading-none">
             Gros<span className="text-primary">ify</span>
           </h1>
-          <p className="text-gray-500 font-medium">
+          <p className="text-gray-500 font-medium mt-2">
             {isLogin ? "Welcome back! Please enter your details." : "Join us to get the freshest groceries delivered."}
           </p>
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
           {!isLogin && (
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input 
-                placeholder="Full Name" 
-                className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </div>
+            <>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input 
+                  placeholder="Full Name" 
+                  className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input 
+                  placeholder="Phone Number" 
+                  className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  required
+                />
+              </div>
+            </>
           )}
           <div className="relative">
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -111,6 +156,19 @@ export function AuthScreen() {
               required
             />
           </div>
+          {!isLogin && (
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input 
+                type="password" 
+                placeholder="Confirm Password" 
+                className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+          )}
           <Button 
             disabled={loading}
             className="w-full h-14 rounded-2xl bg-primary text-lg font-bold shadow-xl shadow-primary/20 transition-all hover:scale-[1.02]"
@@ -138,7 +196,7 @@ export function AuthScreen() {
           Google Account
         </Button>
 
-        <p className="text-center text-sm font-medium text-gray-500">
+        <p className="text-center text-sm font-medium text-gray-500 pb-8">
           {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
           <button 
             onClick={() => setIsLogin(!isLogin)}

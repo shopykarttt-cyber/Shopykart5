@@ -3,7 +3,6 @@
 
 import { useUser } from "@/firebase";
 import { AuthScreen } from "./auth-screen";
-import { VerifyEmailScreen } from "./verify-email-screen";
 import { Loader2 } from "lucide-react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -24,9 +23,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return <AuthScreen />;
   }
 
-  if (!user.emailVerified) {
-    return <VerifyEmailScreen />;
-  }
-
+  // Email verification check removed as requested
   return <>{children}</>;
 }

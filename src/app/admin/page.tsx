@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   LayoutDashboard, 
   Package, 
@@ -10,8 +11,6 @@ import {
   ArrowLeft,
   ChevronRight,
   Plus,
-  TrendingUp,
-  ShoppingBasket,
   DollarSign,
   UserCheck
 } from "lucide-react";
@@ -20,15 +19,22 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query, orderBy } from "firebase/firestore";
 
 export default function AdminPage() {
   const router = useRouter();
+  const db = useFirestore();
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Fetch real-time data for the admin panel
+  const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
+  const { data: customers, loading: customersLoading } = useCollection(customersQuery);
 
   const STATS = [
     { label: "Total Revenue", value: "₹45,230", icon: DollarSign, color: "text-green-500", bg: "bg-green-50" },
     { label: "Products", value: "128", icon: Package, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Customers", value: "1,240", icon: UserCheck, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "Customers", value: customers?.length || "0", icon: UserCheck, color: "text-purple-500", bg: "bg-purple-50" },
     { label: "Active Coupons", value: "12", icon: Tag, color: "text-orange-500", bg: "bg-orange-50" },
   ];
 
@@ -49,7 +55,7 @@ export default function AdminPage() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-x-hidden p-6 space-y-8">
-        <Tabs defaultValue="dashboard" onValueChange={setActiveTab} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-white p-1 rounded-2xl border w-full flex overflow-x-auto hide-scrollbar">
             <TabsTrigger value="dashboard" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">
               <LayoutDashboard className="w-4 h-4 mr-2" />
@@ -58,6 +64,10 @@ export default function AdminPage() {
             <TabsTrigger value="products" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">
               <Package className="w-4 h-4 mr-2" />
               Products
+            </TabsTrigger>
+            <TabsTrigger value="customers" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">
+              <Users className="w-4 h-4 mr-2" />
+              Customers
             </TabsTrigger>
             <TabsTrigger value="coupons" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">
               <Tag className="w-4 h-4 mr-2" />
@@ -96,10 +106,10 @@ export default function AdminPage() {
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </Button>
-                <Button className="h-14 rounded-2xl justify-between bg-white text-gray-800 border-gray-100 border hover:bg-gray-50" onClick={() => setActiveTab("coupons")}>
+                <Button className="h-14 rounded-2xl justify-between bg-white text-gray-800 border-gray-100 border hover:bg-gray-50" onClick={() => setActiveTab("customers")}>
                   <div className="flex items-center gap-3">
-                    <div className="bg-orange-50 p-2 rounded-xl"><Tag className="w-4 h-4 text-orange-500" /></div>
-                    <span className="font-bold">Create Coupon</span>
+                    <div className="bg-purple-50 p-2 rounded-xl"><Users className="w-4 h-4 text-purple-500" /></div>
+                    <span className="font-bold">View Customers</span>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-300" />
                 </Button>
@@ -112,6 +122,41 @@ export default function AdminPage() {
                 </Button>
               </div>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="customers" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Registered Customers</h2>
+              <span className="text-xs font-bold text-gray-400">{customers?.length || 0} Total</span>
+            </div>
+            <div className="space-y-4">
+              {customersLoading ? (
+                <p className="text-center text-gray-400 py-10">Loading customers...</p>
+              ) : customers && customers.length > 0 ? (
+                customers.map((customer: any) => (
+                  <Card key={customer.id} className="p-5 rounded-[2rem] border-none premium-shadow flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
+                        <UserCheck className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-gray-800">{customer.name}</h4>
+                        <p className="text-[10px] text-gray-500 font-medium">{customer.email}</p>
+                        <p className="text-[10px] text-primary font-bold">{customer.phone}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Joined</p>
+                      <p className="text-xs font-bold text-gray-600">
+                        {customer.joinedAt ? new Date(customer.joinedAt).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <p className="text-center text-gray-400 py-10">No customers registered yet.</p>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="products" className="space-y-6">
