@@ -1,11 +1,37 @@
 
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MapPin, Search, Bell, ShoppingBag, ChevronDown, Camera, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 export function TopBar() {
+  const router = useRouter();
+  const [logoClicks, setLogoClicks] = useState(0);
+
+  const handleLogoClick = () => {
+    const nextClicks = logoClicks + 1;
+    setLogoClicks(nextClicks);
+    
+    if (nextClicks === 5) {
+      toast({
+        title: "Admin Mode",
+        description: "Redirecting to admin panel...",
+      });
+      router.push("/admin");
+      setLogoClicks(0);
+    } else if (nextClicks > 2) {
+      // Small feedback for secret click
+      toast({
+        title: "Developer Note",
+        description: `${5 - nextClicks} more clicks to admin...`,
+      });
+    }
+  };
+
   return (
     <div className="bg-black text-white px-6 pt-3 pb-3 space-y-2 sticky top-0 z-40 rounded-b-[2rem] shadow-2xl">
       {/* Top Row: Location and Action Icons */}
@@ -37,7 +63,10 @@ export function TopBar() {
 
       {/* Middle Row: Brand Logo */}
       <div className="flex justify-center">
-        <div className="relative inline-flex flex-col items-center px-6 py-1 border border-[#2E2E2E] rounded-[1.5rem] bg-gradient-to-b from-[#0F0F0F] to-black shadow-[0_5px_15px_rgba(0,0,0,0.6)]">
+        <div 
+          onClick={handleLogoClick}
+          className="relative cursor-pointer select-none inline-flex flex-col items-center px-6 py-1 border border-[#2E2E2E] rounded-[1.5rem] bg-gradient-to-b from-[#0F0F0F] to-black shadow-[0_5px_15px_rgba(0,0,0,0.6)] active:scale-95 transition-transform"
+        >
            <div className="flex items-baseline leading-none">
              <span className="text-lg font-black italic tracking-tighter text-white uppercase">GROSI</span>
              <span className="text-lg font-black italic tracking-tighter text-[#D4AF37] uppercase">FY</span>
