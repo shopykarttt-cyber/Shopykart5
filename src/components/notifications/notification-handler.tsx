@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -18,12 +17,12 @@ export function NotificationHandler() {
       try {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-          // Note: Replace with your actual VAPID key from Firebase Console
+          // Using the provided VAPID key for Web Push
           const token = await getToken(messaging, {
-            vapidKey: 'YOUR_VAPID_KEY_HERE' 
+            vapidKey: 'BKrUFOk40JUUrlOc6Fl8A-kkIzTZl1gKhj4Q3QnsUe-pu37mjhh6qJzmoxsrBoAXWtoJh1mezyQYQML6Tzb3GgI' 
           });
           console.log('FCM Token:', token);
-          // You would typically save this token to Firestore under the user's profile
+          // In a production app, you would save this token to Firestore under the user's profile
         }
       } catch (error) {
         console.error('An error occurred while retrieving token:', error);
