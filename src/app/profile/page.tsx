@@ -4,8 +4,20 @@
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronRight, Settings, CreditCard, Heart, MapPin, ShieldCheck, HelpCircle, LogOut } from "lucide-react";
+import { useAuth, useUser } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
 
 export default function ProfilePage() {
+  const auth = useAuth();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push("/");
+  };
+
   const menuItems = [
     { icon: Heart, label: "Favorites", color: "text-pink-500", bg: "bg-pink-50" },
     { icon: MapPin, label: "Addresses", color: "text-blue-500", bg: "bg-blue-50" },
@@ -21,12 +33,12 @@ export default function ProfilePage() {
         <div className="bg-primary pt-16 pb-12 px-8 rounded-b-[4rem] text-white flex flex-col items-center gap-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-8 translate-x-8"></div>
           <Avatar className="w-24 h-24 border-4 border-white/20 premium-shadow">
-            <AvatarImage src="https://picsum.photos/seed/user/200/200" />
-            <AvatarFallback>JS</AvatarFallback>
+            <AvatarImage src={user?.photoURL || "https://picsum.photos/seed/user/200/200"} />
+            <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
           </Avatar>
           <div className="text-center space-y-1 z-10">
-            <h2 className="text-2xl font-bold">Julian Smith</h2>
-            <p className="text-white/80 font-medium">julian.smith@example.com</p>
+            <h2 className="text-2xl font-bold">{user?.displayName || "Grosify User"}</h2>
+            <p className="text-white/80 font-medium">{user?.email}</p>
           </div>
         </div>
 
@@ -47,7 +59,10 @@ export default function ProfilePage() {
               );
             })}
             
-            <button className="bg-red-50 p-5 rounded-[2rem] flex items-center justify-between group transition-all hover:bg-red-100 mt-4">
+            <button 
+              onClick={handleSignOut}
+              className="bg-red-50 p-5 rounded-[2rem] flex items-center justify-between group transition-all hover:bg-red-100 mt-4"
+            >
               <div className="flex items-center gap-4">
                 <div className="bg-red-500/10 p-3 rounded-2xl">
                   <LogOut className="w-6 h-6 text-red-500" />

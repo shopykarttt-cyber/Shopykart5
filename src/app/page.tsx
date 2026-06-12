@@ -9,6 +9,8 @@ import { ProductCard } from "@/components/home/product-card";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { SplashScreen } from "@/components/ui/splash-screen";
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { useState, useEffect } from "react";
 
 const POPULAR_PRODUCTS = [
   { id: "p1", name: "Fairtrade Bananas", price: 249, unit: "1 kg", discount: "15%", imgId: "product-bananas" },
@@ -20,9 +22,21 @@ const POPULAR_PRODUCTS = [
 ];
 
 export default function Home() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
-    <>
-      <SplashScreen />
+    <AuthGuard>
       <TopBar />
       <div className="flex-1 space-y-2">
         <BannerSlider />
@@ -54,6 +68,6 @@ export default function Home() {
         </div>
       </div>
       <BottomNav />
-    </>
+    </AuthGuard>
   );
 }
