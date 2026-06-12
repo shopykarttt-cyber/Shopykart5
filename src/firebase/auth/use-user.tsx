@@ -11,10 +11,27 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(
+      auth, 
+      (user) => {
+        setUser(user);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Auth state change error:", error);
+        setLoading(false);
+      }
+    );
+
+    // Safety timeout to ensure loading doesn't get stuck forever
+    const timeout = setTimeout(() => {
       setLoading(false);
-    });
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [auth]);
 
   return { user, loading };

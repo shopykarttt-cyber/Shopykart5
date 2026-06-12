@@ -16,11 +16,21 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
   } | null>(null);
 
   useEffect(() => {
-    const { app, firestore, auth } = initializeFirebase();
-    setInstances({ app, firestore, auth });
+    try {
+      const { app, firestore, auth } = initializeFirebase();
+      setInstances({ app, firestore, auth });
+    } catch (error) {
+      console.error("Firebase initialization failed:", error);
+    }
   }, []);
 
-  if (!instances) return null;
+  if (!instances) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <FirebaseProvider
