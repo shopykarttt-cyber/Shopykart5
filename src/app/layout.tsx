@@ -2,6 +2,8 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { NotificationHandler } from '@/components/notifications/notification-handler';
 
 export const metadata: Metadata = {
   title: 'Grosify - Freshness Delivered',
@@ -21,10 +23,13 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-background">
-        <main className="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl bg-white overflow-x-hidden pb-20">
-          {children}
-        </main>
-        <Toaster />
+        <FirebaseClientProvider>
+          <NotificationHandler />
+          <main className="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl bg-white overflow-x-hidden pb-20">
+            {children}
+          </main>
+          <Toaster />
+        </FirebaseClientProvider>
       </body>
     </html>
   );
