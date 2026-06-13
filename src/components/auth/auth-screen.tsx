@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ShoppingBasket, Mail, Lock, User, Phone, Chrome, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function AuthScreen() {
   const auth = useAuth();
@@ -46,9 +48,7 @@ export function AuthScreen() {
         
         await updateProfile(user, { displayName: name });
         
-        // Save customer details to Firestore for Admin Panel
-        const customerRef = doc(db, "customers", user.uid);
-        setDoc(customerRef, {
+        const customerData = {
           name: name,
           email: email,
           phone: phoneNumber,
@@ -56,7 +56,17 @@ export function AuthScreen() {
           totalOrders: 0,
           totalSpent: 0,
           uid: user.uid
-        });
+        };
+
+        // Non-blocking write for production
+        setDoc(doc(db, "customers", user.uid), customerData)
+          .catch(async () => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: `customers/${user.uid}`,
+              operation: 'create',
+              requestResourceData: customerData
+            }));
+          });
 
         toast({ title: "Account created!", description: "Welcome to Grosify!" });
       }
@@ -77,9 +87,7 @@ export function AuthScreen() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      // Also save Google users to customers collection if they don't exist
-      const customerRef = doc(db, "customers", user.uid);
-      setDoc(customerRef, {
+      const customerData = {
         name: user.displayName || "Google User",
         email: user.email,
         phone: user.phoneNumber || "",
@@ -87,7 +95,16 @@ export function AuthScreen() {
         totalOrders: 0,
         totalSpent: 0,
         uid: user.uid
-      }, { merge: true });
+      };
+
+      setDoc(doc(db, "customers", user.uid), customerData, { merge: true })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `customers/${user.uid}`,
+            operation: 'write',
+            requestResourceData: customerData
+          }));
+        });
 
     } catch (error: any) {
       toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });

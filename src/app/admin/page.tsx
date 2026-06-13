@@ -1,11 +1,10 @@
 
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import { 
   LayoutDashboard, 
   Package, 
-  Tag, 
   Users, 
   ArrowLeft,
   Plus,
@@ -15,9 +14,6 @@ import {
   Grid,
   Image as ImageIcon,
   UserCheck,
-  TrendingUp,
-  DollarSign,
-  ShoppingBag
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -26,6 +22,8 @@ import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import {
   Sheet,
   SheetContent,
@@ -68,7 +66,6 @@ export default function AdminPage() {
   const productFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
 
-  // Firestore Collections
   const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
   const { data: customers } = useCollection(customersQuery);
 
@@ -90,15 +87,14 @@ export default function AdminPage() {
     description: "",
     mfgDate: "",
     expiryDate: "",
-    imageData: "" // Base64 image data
+    imageData: "" 
   });
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    imageData: "" // Base64 image data
+    imageData: "" 
   });
 
-  // Convert image to Base64 for permanent Firestore storage
   const handleFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -124,49 +120,73 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddProduct = async () => {
+  const handleAddProduct = () => {
     if (!productForm.name || !productForm.mrp || !productForm.price || !productForm.category) {
       toast({ variant: "destructive", title: "Missing Fields", description: "Name, MRP, Price, and Category are required." });
       return;
     }
     
     setIsAddingProduct(true);
-    try {
-      await addDoc(collection(db, "products"), {
-        ...productForm,
-        mrp: Number(productForm.mrp),
-        price: Number(productForm.price),
-        imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.random()}/400/400`,
-        createdAt: serverTimestamp()
+    const data = {
+      ...productForm,
+      mrp: Number(productForm.mrp),
+      price: Number(productForm.price),
+      imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.random()}/400/400`,
+      createdAt: serverTimestamp()
+    };
+
+    addDoc(collection(db, "products"), data)
+      .then(() => {
+        toast({ title: "Product Live!" });
+        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imageData: "" });
+        setIsAddingProduct(false);
+      })
+      .catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'products',
+          operation: 'create',
+          requestResourceData: data
+        }));
+        setIsAddingProduct(false);
       });
-      toast({ title: "Product Live!" });
-      setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imageData: "" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    } finally {
-      setIsAddingProduct(false);
-    }
   };
 
-  const handleAddCategory = async () => {
+  const handleAddCategory = () => {
     if (!categoryForm.name || !categoryForm.imageData) {
       toast({ variant: "destructive", title: "Missing Fields", description: "Name and Image are required for Category." });
       return;
     }
     setIsAddingCategory(true);
-    try {
-      await addDoc(collection(db, "categories"), {
-        name: categoryForm.name,
-        imageUrl: categoryForm.imageData,
-        createdAt: serverTimestamp()
+    const data = {
+      name: categoryForm.name,
+      imageUrl: categoryForm.imageData,
+      createdAt: serverTimestamp()
+    };
+
+    addDoc(collection(db, "categories"), data)
+      .then(() => {
+        toast({ title: "Category Created" });
+        setCategoryForm({ name: "", imageData: "" });
+        setIsAddingCategory(false);
+      })
+      .catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'categories',
+          operation: 'create',
+          requestResourceData: data
+        }));
+        setIsAddingCategory(false);
       });
-      toast({ title: "Category Created" });
-      setCategoryForm({ name: "", imageData: "" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    } finally {
-      setIsAddingCategory(false);
-    }
+  };
+
+  const handleDeleteProduct = (id: string) => {
+    const productRef = doc(db, "products", id);
+    deleteDoc(productRef).catch(async (e) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `products/${id}`,
+        operation: 'delete'
+      }));
+    });
   };
 
   const menuItems = [
@@ -174,7 +194,6 @@ export default function AdminPage() {
     { id: "products", label: "Products", icon: Package },
     { id: "categories", label: "Categories", icon: Grid },
     { id: "customers", label: "Customers", icon: Users },
-    { id: "coupons", label: "Coupons", icon: Tag },
   ];
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
@@ -314,7 +333,7 @@ export default function AdminPage() {
                       <p className="text-sm font-black">₹{p.price}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}>
+                  <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDeleteProduct(p.id)}>
                     <Trash2 className="w-5 h-5" />
                   </Button>
                 </Card>
@@ -343,7 +362,14 @@ export default function AdminPage() {
                 <Card key={cat.id} className="p-5 rounded-[2rem] border-none shadow-lg bg-white flex flex-col items-center relative overflow-hidden group text-center">
                   <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-2xl mb-2" />
                   <span className="font-bold text-gray-800 text-sm line-clamp-1">{cat.name}</span>
-                  <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-4 right-4 text-gray-300 hover:text-red-500">
+                  <button onClick={() => {
+                    deleteDoc(doc(db, "categories", cat.id)).catch(async () => {
+                      errorEmitter.emit('permission-error', new FirestorePermissionError({
+                        path: `categories/${cat.id}`,
+                        operation: 'delete'
+                      }));
+                    });
+                  }} className="absolute top-4 right-4 text-gray-300 hover:text-red-500">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </Card>
