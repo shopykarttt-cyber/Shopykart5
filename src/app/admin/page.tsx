@@ -1,34 +1,29 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { 
   LayoutDashboard, 
   Package, 
   Tag, 
   Users, 
-  BellRing, 
   ArrowLeft,
   Plus,
-  DollarSign,
-  UserCheck,
   Loader2,
   Trash2,
   Menu,
-  TrendingUp,
-  ShoppingBag,
-  Globe,
-  History,
   Grid,
   Image as ImageIcon,
-  X
+  UserCheck,
+  TrendingUp,
+  DollarSign,
+  ShoppingBag
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -68,6 +63,7 @@ const SALES_DATA = [
 export default function AdminPage() {
   const router = useRouter();
   const db = useFirestore();
+  const { user, loading: authLoading } = useUser();
   const [view, setView] = useState("dashboard");
   const productFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
@@ -82,9 +78,6 @@ export default function AdminPage() {
   const categoriesQuery = useMemo(() => query(collection(db, "categories"), orderBy("name", "asc")), [db]);
   const { data: categories } = useCollection(categoriesQuery);
 
-  const couponsQuery = useMemo(() => query(collection(db, "coupons"), orderBy("code", "asc")), [db]);
-  const { data: coupons } = useCollection(couponsQuery);
-
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   
@@ -97,22 +90,38 @@ export default function AdminPage() {
     description: "",
     mfgDate: "",
     expiryDate: "",
-    imagePreview: ""
+    imageData: "" // Base64 image data
   });
 
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    imagePreview: ""
+    imageData: "" // Base64 image data
   });
 
-  const handleProductImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setProductForm({ ...productForm, imagePreview: URL.createObjectURL(file) });
+  // Convert image to Base64 for permanent Firestore storage
+  const handleFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
   };
 
-  const handleCategoryImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProductImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setCategoryForm({ ...categoryForm, imagePreview: URL.createObjectURL(file) });
+    if (file) {
+      const base64 = await handleFileToBase64(file);
+      setProductForm({ ...productForm, imageData: base64 });
+    }
+  };
+
+  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await handleFileToBase64(file);
+      setCategoryForm({ ...categoryForm, imageData: base64 });
+    }
   };
 
   const handleAddProduct = async () => {
@@ -123,16 +132,15 @@ export default function AdminPage() {
     
     setIsAddingProduct(true);
     try {
-      const imageUrl = productForm.imagePreview || `https://picsum.photos/seed/${Math.random()}/400/400`;
       await addDoc(collection(db, "products"), {
         ...productForm,
         mrp: Number(productForm.mrp),
         price: Number(productForm.price),
-        imageUrl,
+        imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.random()}/400/400`,
         createdAt: serverTimestamp()
       });
       toast({ title: "Product Live!" });
-      setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imagePreview: "" });
+      setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imageData: "" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -141,7 +149,7 @@ export default function AdminPage() {
   };
 
   const handleAddCategory = async () => {
-    if (!categoryForm.name || !categoryForm.imagePreview) {
+    if (!categoryForm.name || !categoryForm.imageData) {
       toast({ variant: "destructive", title: "Missing Fields", description: "Name and Image are required for Category." });
       return;
     }
@@ -149,11 +157,11 @@ export default function AdminPage() {
     try {
       await addDoc(collection(db, "categories"), {
         name: categoryForm.name,
-        imageUrl: categoryForm.imagePreview,
+        imageUrl: categoryForm.imageData,
         createdAt: serverTimestamp()
       });
       toast({ title: "Category Created" });
-      setCategoryForm({ name: "", imagePreview: "" });
+      setCategoryForm({ name: "", imageData: "" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -168,6 +176,9 @@ export default function AdminPage() {
     { id: "customers", label: "Customers", icon: Users },
     { id: "coupons", label: "Coupons", icon: Tag },
   ];
+
+  if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (!user) { router.push("/"); return null; }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
@@ -263,7 +274,7 @@ export default function AdminPage() {
                     <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
                     <div className="space-y-6 pb-20">
                       <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer overflow-hidden relative">
-                        {productForm.imagePreview ? <img src={productForm.imagePreview} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+                        {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                         <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
                       </div>
                       <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
@@ -280,6 +291,10 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                       <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input type="date" placeholder="MFG Date" value={productForm.mfgDate} onChange={e => setProductForm({...productForm, mfgDate: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <Input type="date" placeholder="Expiry Date" value={productForm.expiryDate} onChange={e => setProductForm({...productForm, expiryDate: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      </div>
                       <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct} disabled={isAddingProduct}>
                         {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Live"}
                       </Button>
@@ -313,7 +328,7 @@ export default function AdminPage() {
             <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
             <Card className="p-6 rounded-[2rem] border-none shadow-xl bg-white space-y-4">
               <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden relative">
-                {categoryForm.imagePreview ? <img src={categoryForm.imagePreview} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
+                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
                 <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
               </div>
               <div className="flex gap-2">
@@ -325,9 +340,9 @@ export default function AdminPage() {
             </Card>
             <div className="grid grid-cols-2 gap-4">
               {categories?.map((cat: any) => (
-                <Card key={cat.id} className="p-5 rounded-[2rem] border-none shadow-lg bg-white flex flex-col items-center relative overflow-hidden group">
+                <Card key={cat.id} className="p-5 rounded-[2rem] border-none shadow-lg bg-white flex flex-col items-center relative overflow-hidden group text-center">
                   <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-2xl mb-2" />
-                  <span className="font-bold text-gray-800">{cat.name}</span>
+                  <span className="font-bold text-gray-800 text-sm line-clamp-1">{cat.name}</span>
                   <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-4 right-4 text-gray-300 hover:text-red-500">
                     <Trash2 className="w-4 h-4" />
                   </button>

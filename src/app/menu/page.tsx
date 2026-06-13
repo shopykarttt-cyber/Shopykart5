@@ -24,7 +24,7 @@ export default function MenuPage() {
             categories.map((cat: any) => (
               <button key={cat.id} className="bg-white p-6 rounded-[2rem] premium-shadow border border-gray-50 flex justify-between items-center group hover:-translate-y-1 hover:border-primary/20 transition-all">
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-3xl overflow-hidden relative">
+                  <div className="w-16 h-16 rounded-3xl overflow-hidden relative bg-gray-50">
                     <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                   </div>
                   <span className="font-bold text-xl text-gray-800">{cat.name}</span>
@@ -37,10 +37,10 @@ export default function MenuPage() {
               <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
                 <Grid className="w-8 h-8 text-gray-300" />
               </div>
-              <p className="text-xs font-black text-gray-300 uppercase tracking-widest">Nothing found</p>
+              <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No categories live</p>
             </div>
           )}
-          {loading && <p className="text-center text-gray-400">Loading categories...</p>}
+          {loading && <p className="text-center text-gray-400 py-10">Loading categories...</p>}
         </div>
       </div>
       <BottomNav />
