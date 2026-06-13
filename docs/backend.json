@@ -7,15 +7,17 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "price": { "type": "number" },
+        "mrp": { "type": "number", "description": "Market Retail Price" },
+        "price": { "type": "number", "description": "Discounted Sale Price" },
         "unit": { "type": "string" },
         "category": { "type": "string" },
         "description": { "type": "string" },
         "imageUrl": { "type": "string" },
-        "stock": { "type": "number" },
-        "discount": { "type": "string" }
+        "mfgDate": { "type": "string", "format": "date" },
+        "expiryDate": { "type": "string", "format": "date" },
+        "stock": { "type": "number" }
       },
-      "required": ["name", "price", "unit", "category"]
+      "required": ["name", "mrp", "price", "unit", "category"]
     },
     "Category": {
       "title": "Category",

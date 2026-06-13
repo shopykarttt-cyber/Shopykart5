@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { 
   LayoutDashboard, 
   Package, 
@@ -9,7 +9,6 @@ import {
   Users, 
   BellRing, 
   ArrowLeft,
-  ChevronRight,
   Plus,
   DollarSign,
   UserCheck,
@@ -19,14 +18,17 @@ import {
   TrendingUp,
   ShoppingBag,
   Globe,
-  Settings,
   History,
-  Grid
+  Grid,
+  Image as ImageIcon,
+  Calendar as CalendarIcon,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
@@ -38,6 +40,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Bar,
   BarChart,
   ResponsiveContainer,
@@ -46,7 +55,7 @@ import {
   Tooltip,
   Cell
 } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -62,6 +71,7 @@ export default function AdminPage() {
   const router = useRouter();
   const db = useFirestore();
   const [view, setView] = useState("dashboard");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Firestore Collections
   const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
@@ -70,28 +80,91 @@ export default function AdminPage() {
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("name", "asc")), [db]);
   const { data: products } = useCollection(productsQuery);
 
+  const categoriesQuery = useMemo(() => query(collection(db, "categories"), orderBy("name", "asc")), [db]);
+  const { data: categories } = useCollection(categoriesQuery);
+
   const couponsQuery = useMemo(() => query(collection(db, "coupons"), orderBy("code", "asc")), [db]);
   const { data: coupons } = useCollection(couponsQuery);
 
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: "", price: "", unit: "", category: "Fruits & Veggies", description: "" });
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  
+  const [productForm, setProductForm] = useState({
+    name: "",
+    mrp: "",
+    price: "",
+    unit: "",
+    category: "",
+    description: "",
+    mfgDate: "",
+    expiryDate: "",
+    imageFile: null as File | null,
+    imagePreview: ""
+  });
+
+  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProductForm({
+        ...productForm,
+        imageFile: file,
+        imagePreview: URL.createObjectURL(file)
+      });
+    }
+  };
 
   const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price) return;
+    if (!productForm.name || !productForm.mrp || !productForm.price || !productForm.category) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Please fill all required fields including category." });
+      return;
+    }
+    
     setIsAddingProduct(true);
     try {
-      addDoc(collection(db, "products"), {
-        ...newProduct,
-        price: Number(newProduct.price),
-        imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
+      // In a real app, you would upload the imageFile to Firebase Storage here.
+      // For this prototype, we'll use the preview URL or a placeholder if no image is picked.
+      const imageUrl = productForm.imagePreview || `https://picsum.photos/seed/${Math.random()}/400/400`;
+
+      await addDoc(collection(db, "products"), {
+        name: productForm.name,
+        mrp: Number(productForm.mrp),
+        price: Number(productForm.price),
+        unit: productForm.unit || "1 unit",
+        category: productForm.category,
+        description: productForm.description || "",
+        mfgDate: productForm.mfgDate || null,
+        expiryDate: productForm.expiryDate || null,
+        imageUrl: imageUrl,
         createdAt: serverTimestamp()
       });
-      toast({ title: "Product Added" });
-      setNewProduct({ name: "", price: "", unit: "", category: "Fruits & Veggies", description: "" });
+
+      toast({ title: "Product Added Successfully!" });
+      setProductForm({
+        name: "", mrp: "", price: "", unit: "", category: "",
+        description: "", mfgDate: "", expiryDate: "", imageFile: null, imagePreview: ""
+      });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
       setIsAddingProduct(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName) return;
+    setIsAddingCategory(true);
+    try {
+      await addDoc(collection(db, "categories"), {
+        name: newCategoryName,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "Category Created" });
+      setNewCategoryName("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setIsAddingCategory(false);
     }
   };
 
@@ -202,27 +275,12 @@ export default function AdminPage() {
               </div>
             </Card>
 
-            {/* Real Insights Card */}
-            <Card className="rounded-[2.5rem] bg-gradient-to-br from-[#E11D48] to-[#9F1239] p-10 text-white border-none shadow-2xl shadow-red-200 flex flex-col items-center justify-center text-center gap-6 relative overflow-hidden group">
-               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-24 translate-x-24 group-hover:scale-110 transition-transform duration-1000"></div>
-               <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md">
-                 <History className="w-10 h-10 animate-spin-slow" />
-               </div>
-               <div className="space-y-2">
-                 <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70">BUSINESS CONSOLE</p>
-                 <h3 className="text-4xl font-black italic uppercase tracking-tighter leading-tight">REAL <br/> INSIGHTS</h3>
-               </div>
-               <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed opacity-80">
-                 AAPKE SAARE STATS AB LIVE ORDERS <br/> SE CONNECTED HAIN.
-               </p>
-            </Card>
-
             {/* Stats Cards */}
             <div className="space-y-4">
               {[
                 { label: "TOTAL REVENUE", value: "₹16,335.15", icon: DollarSign, color: "text-emerald-500", bg: "bg-emerald-50", subtitle: "Live from Firestore" },
-                { label: "TOTAL ORDERS", value: products?.length || "187", icon: ShoppingBag, color: "text-blue-500", bg: "bg-blue-50", subtitle: "Live from Firestore" },
-                { label: "REGISTERED USERS", value: customers?.length || "171", icon: Users, color: "text-purple-500", bg: "bg-purple-50", subtitle: "Live from Firestore" },
+                { label: "TOTAL PRODUCTS", value: products?.length || "0", icon: ShoppingBag, color: "text-blue-500", bg: "bg-blue-50", subtitle: "Live from Firestore" },
+                { label: "REGISTERED USERS", value: customers?.length || "0", icon: Users, color: "text-purple-500", bg: "bg-purple-50", subtitle: "Live from Firestore" },
                 { label: "NETWORK STATUS", value: "Live", icon: Globe, color: "text-amber-500", bg: "bg-amber-50", subtitle: "Live from Firestore" },
               ].map((stat, i) => (
                 <Card key={i} className="p-8 rounded-[2.5rem] border-none shadow-xl shadow-gray-100 bg-white flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
@@ -246,36 +304,170 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase tracking-tighter">MANAGE PRODUCTS</h2>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button size="icon" className="rounded-2xl bg-black text-white w-12 h-12"><Plus className="w-6 h-6" /></Button>
+                  <Button size="icon" className="rounded-2xl bg-black text-white w-12 h-12 shadow-xl shadow-black/20"><Plus className="w-6 h-6" /></Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[80vh] rounded-t-[3rem] bg-white p-8">
-                  <SheetHeader><SheetTitle>Add Product</SheetTitle></SheetHeader>
-                  <div className="space-y-4 mt-6">
-                    <Input placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
-                    <Input placeholder="Price (₹)" type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
-                    <Input placeholder="Unit" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
-                    <Button className="w-full h-14 rounded-2xl bg-primary text-lg font-bold" onClick={handleAddProduct} disabled={isAddingProduct}>
-                      {isAddingProduct ? <Loader2 className="animate-spin" /> : "Save Product"}
-                    </Button>
-                  </div>
+                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 overflow-hidden">
+                  <ScrollArea className="h-full px-8 py-8">
+                    <SheetHeader className="mb-6">
+                      <SheetTitle className="text-2xl font-black uppercase italic">Add New Product</SheetTitle>
+                    </SheetHeader>
+                    
+                    <div className="space-y-6 pb-20">
+                      {/* Image Upload Area */}
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-100 transition-all overflow-hidden relative"
+                      >
+                        {productForm.imagePreview ? (
+                          <>
+                            <img src={productForm.imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setProductForm({...productForm, imageFile: null, imagePreview: ""}); }}
+                              className="absolute top-4 right-4 bg-black/50 p-2 rounded-full text-white backdrop-blur-md"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <div className="bg-white p-4 rounded-3xl shadow-sm">
+                              <ImageIcon className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Tap to open gallery</p>
+                          </>
+                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleImagePick} accept="image/*" className="hidden" />
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Product Name *</label>
+                          <Input placeholder="Enter product name" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">MRP (₹) *</label>
+                            <Input type="number" placeholder="0.00" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Discount Price (₹) *</label>
+                            <Input type="number" placeholder="0.00" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Category *</label>
+                          <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
+                            <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold">
+                              <SelectValue placeholder="Select Category" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-2xl border-none shadow-2xl">
+                              {categories?.map((cat: any) => (
+                                <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>
+                              ))}
+                              {(!categories || categories.length === 0) && (
+                                <p className="p-4 text-xs text-center font-bold text-red-400 italic">Please create categories first!</p>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Unit (e.g. 1kg, 500g)</label>
+                          <Input placeholder="1 unit" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">MFG Date</label>
+                            <Input type="date" value={productForm.mfgDate} onChange={e => setProductForm({...productForm, mfgDate: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Expiry Date</label>
+                            <Input type="date" value={productForm.expiryDate} onChange={e => setProductForm({...productForm, expiryDate: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Description (Optional)</label>
+                          <Textarea placeholder="Write something about the product..." value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} className="min-h-[100px] rounded-2xl bg-gray-50 border-none px-6 py-4 font-bold" />
+                        </div>
+
+                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic tracking-tight uppercase shadow-xl shadow-primary/20 transition-all hover:scale-[1.02]" onClick={handleAddProduct} disabled={isAddingProduct}>
+                          {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Product"}
+                        </Button>
+                      </div>
+                    </div>
+                  </ScrollArea>
                 </SheetContent>
               </Sheet>
             </div>
+            
             <div className="grid gap-4">
               {products?.map((p: any) => (
-                <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
+                <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between group">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gray-100 rounded-2xl overflow-hidden">
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                    <div className="w-16 h-16 bg-gray-50 rounded-2xl overflow-hidden shadow-inner">
+                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
                     </div>
-                    <div>
+                    <div className="space-y-0.5">
+                      <p className="text-[8px] font-black text-primary uppercase tracking-widest">{p.category}</p>
                       <h4 className="font-bold text-gray-800">{p.name}</h4>
-                      <p className="text-xs text-gray-500 font-bold">₹{p.price} • {p.unit}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-gray-900">₹{p.price}</span>
+                        {p.mrp > p.price && (
+                          <span className="text-[10px] font-bold text-gray-400 line-through">₹{p.mrp}</span>
+                        )}
+                        <span className="text-[10px] font-bold text-gray-400">/ {p.unit}</span>
+                      </div>
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 rounded-xl" onClick={() => deleteDoc(doc(db, "products", p.id))}>
                     <Trash2 className="w-5 h-5" />
                   </Button>
+                </Card>
+              ))}
+              {(!products || products.length === 0) && (
+                <div className="py-20 text-center space-y-4">
+                   <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                     <Package className="w-8 h-8 text-gray-300" />
+                   </div>
+                   <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No products yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === "categories" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter">MANAGE CATEGORIES</h2>
+            <Card className="p-6 rounded-[2rem] border-none shadow-xl bg-white space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">New Category Name</label>
+                <div className="flex gap-2">
+                  <Input placeholder="e.g. Fruits, Drinks" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                  <Button onClick={handleAddCategory} disabled={isAddingCategory} className="h-14 w-14 rounded-2xl bg-black">
+                    {isAddingCategory ? <Loader2 className="animate-spin" /> : <Plus className="w-6 h-6" />}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-2 gap-4">
+              {categories?.map((cat: any) => (
+                <Card key={cat.id} className="p-5 rounded-[2rem] border-none shadow-lg bg-white flex flex-col items-center justify-center gap-3 relative overflow-hidden group">
+                  <div className="bg-primary/5 p-4 rounded-3xl transition-transform group-hover:scale-110">
+                    <Grid className="w-6 h-6 text-primary" />
+                  </div>
+                  <span className="font-bold text-gray-800">{cat.name}</span>
+                  <button 
+                    onClick={() => deleteDoc(doc(db, "categories", cat.id))}
+                    className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </Card>
               ))}
             </div>
