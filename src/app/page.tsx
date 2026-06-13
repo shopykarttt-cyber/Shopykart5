@@ -1,28 +1,26 @@
 
 "use client";
 
+import { useMemo } from "react";
 import { TopBar } from "@/components/layout/top-bar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BannerSlider } from "@/components/home/banner-slider";
 import { CategoryScroller } from "@/components/home/category-scroller";
 import { ProductCard } from "@/components/home/product-card";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { SplashScreen } from "@/components/ui/splash-screen";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useState, useEffect } from "react";
-
-const POPULAR_PRODUCTS = [
-  { id: "p1", name: "Fairtrade Bananas", price: 249, unit: "1 kg", discount: "15%", imgId: "product-bananas" },
-  { id: "p2", name: "Organic Whole Milk", price: 180, unit: "1 L", imgId: "product-milk" },
-  { id: "p3", name: "Free Range Eggs", price: 450, unit: "12 pcs", discount: "10%", imgId: "product-eggs" },
-  { id: "p4", name: "Ripe Hass Avocados", price: 899, unit: "2 pcs", imgId: "product-avocado" },
-  { id: "p5", name: "Artisan Sourdough", price: 320, unit: "500 g", imgId: "product-bread" },
-  { id: "p6", name: "Specialty Cold Brew", price: 550, unit: "250 ml", imgId: "product-coffee" },
-];
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
+import { Package } from "lucide-react";
 
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
+  const db = useFirestore();
+
+  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(10)), [db]);
+  const { data: liveProducts, loading: productsLoading } = useCollection(productsQuery);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -50,20 +48,28 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            {POPULAR_PRODUCTS.map((product) => {
-              const img = PlaceHolderImages.find(i => i.id === product.imgId);
-              return (
+            {liveProducts && liveProducts.length > 0 ? (
+              liveProducts.map((product: any) => (
                 <ProductCard 
                   key={product.id}
                   id={product.id}
                   name={product.name}
                   price={product.price}
                   unit={product.unit}
-                  discount={product.discount}
-                  imageId={img?.imageUrl || ""}
+                  discount={product.mrp > product.price ? `${Math.round(((product.mrp - product.price) / product.mrp) * 100)}%` : undefined}
+                  imageId={product.imageUrl}
                 />
-              )
-            })}
+              ))
+            ) : !productsLoading && (
+              <div className="col-span-2 py-20 text-center space-y-4">
+                 <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                   <Package className="w-8 h-8 text-gray-300" />
+                 </div>
+                 <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No products live yet</p>
+                 <p className="text-[10px] text-gray-400">Add products from Admin Panel</p>
+              </div>
+            )}
+            {productsLoading && <p className="text-center col-span-2 py-10 text-gray-400">Loading products...</p>}
           </div>
         </div>
       </div>
