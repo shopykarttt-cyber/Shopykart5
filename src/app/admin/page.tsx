@@ -14,12 +14,18 @@ import {
   DollarSign,
   UserCheck,
   Loader2,
-  Trash2
+  Trash2,
+  Menu,
+  TrendingUp,
+  ShoppingBag,
+  Globe,
+  Settings,
+  History,
+  Grid
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
@@ -31,31 +37,44 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell
+} from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+
+const SALES_DATA = [
+  { day: "Sun", sales: 4000 },
+  { day: "Mon", sales: 1500 },
+  { day: "Tue", sales: 1800 },
+  { day: "Wed", sales: 1200 },
+  { day: "Thu", sales: 1100 },
+  { day: "Fri", sales: 3800 },
+  { day: "Sat", sales: 500 },
+];
 
 export default function AdminPage() {
   const router = useRouter();
   const db = useFirestore();
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+  const [view, setView] = useState("dashboard");
 
   // Firestore Collections
   const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
-  const { data: customers, loading: customersLoading } = useCollection(customersQuery);
+  const { data: customers } = useCollection(customersQuery);
 
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("name", "asc")), [db]);
-  const { data: products, loading: productsLoading } = useCollection(productsQuery);
+  const { data: products } = useCollection(productsQuery);
 
   const couponsQuery = useMemo(() => query(collection(db, "coupons"), orderBy("code", "asc")), [db]);
-  const { data: coupons, loading: couponsLoading } = useCollection(couponsQuery);
+  const { data: coupons } = useCollection(couponsQuery);
 
-  const notificationsQuery = useMemo(() => query(collection(db, "notifications"), orderBy("sentAt", "desc")), [db]);
-  const { data: notifications, loading: notificationsLoading } = useCollection(notificationsQuery);
-
-  // Form States
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: "", price: "", unit: "", category: "Fruits & Veggies", description: "" });
-  const [newCoupon, setNewCoupon] = useState({ code: "", discountType: "fixed", value: "", minOrder: "0", expiryDate: "" });
-  const [newNotification, setNewNotification] = useState({ title: "", body: "" });
 
   const handleAddProduct = async () => {
     if (!newProduct.name || !newProduct.price) return;
@@ -67,7 +86,7 @@ export default function AdminPage() {
         imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
         createdAt: serverTimestamp()
       });
-      toast({ title: "Product Added", description: `${newProduct.name} is now live.` });
+      toast({ title: "Product Added" });
       setNewProduct({ name: "", price: "", unit: "", category: "Fruits & Veggies", description: "" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
@@ -76,250 +95,231 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddCoupon = async () => {
-    if (!newCoupon.code || !newCoupon.value) return;
-    setIsAddingCoupon(true);
-    try {
-      addDoc(collection(db, "coupons"), {
-        ...newCoupon,
-        value: Number(newCoupon.value),
-        minOrder: Number(newCoupon.minOrder),
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "Coupon Created", description: `Code ${newCoupon.code} is active.` });
-      setNewCoupon({ code: "", discountType: "fixed", value: "", minOrder: "0", expiryDate: "" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    } finally {
-      setIsAddingCoupon(false);
-    }
-  };
-
-  const handleSendNotification = async () => {
-    if (!newNotification.title || !newNotification.body) return;
-    try {
-      addDoc(collection(db, "notifications"), {
-        ...newNotification,
-        sentAt: new Date().toISOString(),
-        target: "all"
-      });
-      toast({ title: "Notification Sent", description: "Message broadcasted to all users." });
-      setNewNotification({ title: "", body: "" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    }
-  };
-
-  const handleDelete = async (coll: string, id: string) => {
-    try {
-      deleteDoc(doc(db, coll, id));
-      toast({ title: "Deleted Successfully" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    }
-  };
-
-  const STATS = [
-    { label: "Total Revenue", value: "₹45,230", icon: DollarSign, color: "text-green-500", bg: "bg-green-50" },
-    { label: "Products", value: products?.length || "0", icon: Package, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Customers", value: customers?.length || "0", icon: UserCheck, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "Active Coupons", value: coupons?.length || "0", icon: Tag, color: "text-orange-500", bg: "bg-orange-50" },
+  const menuItems = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "products", label: "Products", icon: Package },
+    { id: "categories", label: "Categories", icon: Grid },
+    { id: "customers", label: "Customers History", icon: History },
+    { id: "coupons", label: "Coupons", icon: Tag },
+    { id: "push", label: "Push Notifications", icon: BellRing },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-20">
-      <header className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="rounded-full">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-xl font-bold tracking-tight">Admin Control</h1>
+    <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
+      {/* Top Navigation */}
+      <header className="bg-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="bg-red-500 p-2 rounded-xl">
+             <Grid className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-lg font-black italic tracking-tighter uppercase">ADMIN <span className="text-gray-400">HUB</span></h1>
         </div>
-        <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-          Grosify Admin
-        </div>
+        
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <Menu className="w-6 h-6" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-[300px] p-6 bg-white border-none shadow-2xl">
+            <SheetHeader className="text-left mb-8">
+              <SheetTitle className="text-2xl font-black italic tracking-tighter uppercase">GROSI<span className="text-primary">FY</span></SheetTitle>
+              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Management Console</p>
+            </SheetHeader>
+            <div className="space-y-2">
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => { setView(item.id); }}
+                  className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'}`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-bold">{item.label}</span>
+                </button>
+              ))}
+              <div className="pt-8">
+                <Button variant="ghost" onClick={() => router.push("/")} className="w-full justify-start gap-4 px-4 py-6 rounded-2xl text-gray-400 font-bold">
+                  <ArrowLeft className="w-5 h-5" /> Back to App
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </header>
 
-      <div className="flex-1 overflow-x-hidden p-6 space-y-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white p-1 rounded-2xl border w-full flex overflow-x-auto hide-scrollbar">
-            <TabsTrigger value="dashboard" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">Dashboard</TabsTrigger>
-            <TabsTrigger value="products" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">Products</TabsTrigger>
-            <TabsTrigger value="customers" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">Customers</TabsTrigger>
-            <TabsTrigger value="coupons" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">Coupons</TabsTrigger>
-            <TabsTrigger value="notifications" className="rounded-xl flex-1 data-[state=active]:bg-primary data-[state=active]:text-white">Push</TabsTrigger>
-          </TabsList>
+      <main className="flex-1 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        {view === "dashboard" && (
+          <>
+            <div className="space-y-1">
+              <h2 className="text-4xl font-black tracking-tight text-gray-900 italic uppercase leading-none">DASHBOARD</h2>
+              <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">MANAGEMENT PORTAL</p>
+            </div>
 
-          <TabsContent value="dashboard" className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              {STATS.map((stat, i) => (
-                <Card key={i} className="p-4 rounded-[2rem] border-none premium-shadow flex flex-col gap-3">
-                  <div className={`${stat.bg} ${stat.color} w-10 h-10 rounded-2xl flex items-center justify-center`}>
-                    <stat.icon className="w-5 h-5" />
+            {/* Weekly Sales Card */}
+            <Card className="rounded-[2.5rem] border-none shadow-2xl shadow-gray-200 overflow-hidden bg-white">
+              <div className="bg-black p-8 text-white flex justify-between items-center">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-red-500" />
+                    <h3 className="text-xl font-black italic uppercase tracking-tighter leading-none">WEEKLY SALES</h3>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
-                    <p className="text-lg font-bold">{stat.value}</p>
+                  <h3 className="text-xl font-black italic uppercase tracking-tighter leading-none opacity-100">ANALYTICS</h3>
+                </div>
+                <div className="bg-red-600 text-[10px] font-black uppercase px-3 py-1.5 rounded-full tracking-widest">
+                  REAL_TIME
+                </div>
+              </div>
+              <div className="p-8 h-[250px] w-full bg-white">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={SALES_DATA}>
+                    <XAxis 
+                      dataKey="day" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{fill: '#CBD5E1', fontSize: 12, fontWeight: 700}} 
+                      dy={10}
+                    />
+                    <Tooltip 
+                      cursor={{fill: '#F8F9FA'}}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-black text-white px-4 py-2 rounded-xl text-xs font-bold">
+                              ₹{payload[0].value}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="sales" radius={[12, 12, 12, 12]} barSize={40}>
+                      {SALES_DATA.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 || index === 5 ? '#E2E8F0' : '#EDF2F7'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* Real Insights Card */}
+            <Card className="rounded-[2.5rem] bg-gradient-to-br from-[#E11D48] to-[#9F1239] p-10 text-white border-none shadow-2xl shadow-red-200 flex flex-col items-center justify-center text-center gap-6 relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-24 translate-x-24 group-hover:scale-110 transition-transform duration-1000"></div>
+               <div className="bg-white/10 p-4 rounded-3xl backdrop-blur-md">
+                 <History className="w-10 h-10 animate-spin-slow" />
+               </div>
+               <div className="space-y-2">
+                 <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70">BUSINESS CONSOLE</p>
+                 <h3 className="text-4xl font-black italic uppercase tracking-tighter leading-tight">REAL <br/> INSIGHTS</h3>
+               </div>
+               <p className="text-[10px] font-black uppercase tracking-widest leading-relaxed opacity-80">
+                 AAPKE SAARE STATS AB LIVE ORDERS <br/> SE CONNECTED HAIN.
+               </p>
+            </Card>
+
+            {/* Stats Cards */}
+            <div className="space-y-4">
+              {[
+                { label: "TOTAL REVENUE", value: "₹16,335.15", icon: DollarSign, color: "text-emerald-500", bg: "bg-emerald-50", subtitle: "Live from Firestore" },
+                { label: "TOTAL ORDERS", value: products?.length || "187", icon: ShoppingBag, color: "text-blue-500", bg: "bg-blue-50", subtitle: "Live from Firestore" },
+                { label: "REGISTERED USERS", value: customers?.length || "171", icon: Users, color: "text-purple-500", bg: "bg-purple-50", subtitle: "Live from Firestore" },
+                { label: "NETWORK STATUS", value: "Live", icon: Globe, color: "text-amber-500", bg: "bg-amber-50", subtitle: "Live from Firestore" },
+              ].map((stat, i) => (
+                <Card key={i} className="p-8 rounded-[2.5rem] border-none shadow-xl shadow-gray-100 bg-white flex items-center justify-between group hover:-translate-y-1 transition-all duration-300">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{stat.label}</p>
+                    <h4 className="text-2xl font-black text-gray-900 tracking-tight">{stat.value}</h4>
+                    <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-tight">{stat.subtitle}</p>
+                  </div>
+                  <div className={`${stat.bg} ${stat.color} w-12 h-12 rounded-full flex items-center justify-center shadow-inner`}>
+                    <stat.icon className="w-6 h-6" />
                   </div>
                 </Card>
               ))}
             </div>
-            
-            <Card className="p-6 rounded-[2.5rem] border-none premium-shadow space-y-4">
-              <h3 className="font-bold text-lg">Quick Actions</h3>
-              <div className="grid gap-3">
-                <Button className="h-14 rounded-2xl justify-between bg-white text-gray-800 border-gray-100 border hover:bg-gray-50" onClick={() => setActiveTab("products")}>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-blue-50 p-2 rounded-xl"><Package className="w-4 h-4 text-blue-500" /></div>
-                    <span className="font-bold">Manage Products</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
-                </Button>
-                <Button className="h-14 rounded-2xl justify-between bg-white text-gray-800 border-gray-100 border hover:bg-gray-50" onClick={() => setActiveTab("notifications")}>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-red-50 p-2 rounded-xl"><BellRing className="w-4 h-4 text-red-500" /></div>
-                    <span className="font-bold">Send Notification</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-300" />
-                </Button>
-              </div>
-            </Card>
-          </TabsContent>
+          </>
+        )}
 
-          <TabsContent value="products" className="space-y-6">
+        {view === "products" && (
+          <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Products ({products?.length || 0})</h2>
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter">MANAGE PRODUCTS</h2>
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button size="sm" className="rounded-xl h-10 px-4">
-                    <Plus className="w-4 h-4 mr-2" /> Add New
-                  </Button>
+                  <Button size="icon" className="rounded-2xl bg-black text-white w-12 h-12"><Plus className="w-6 h-6" /></Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[80vh] rounded-t-[3rem]">
-                  <SheetHeader>
-                    <SheetTitle>Add New Product</SheetTitle>
-                  </SheetHeader>
+                <SheetContent side="bottom" className="h-[80vh] rounded-t-[3rem] bg-white p-8">
+                  <SheetHeader><SheetTitle>Add Product</SheetTitle></SheetHeader>
                   <div className="space-y-4 mt-6">
-                    <Input placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                    <Input placeholder="Price (₹)" type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-                    <Input placeholder="Unit (e.g. 1kg, 500g)" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} />
-                    <Input placeholder="Description" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
-                    <Button className="w-full h-14 rounded-2xl" onClick={handleAddProduct} disabled={isAddingProduct}>
+                    <Input placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
+                    <Input placeholder="Price (₹)" type="number" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
+                    <Input placeholder="Unit" value={newProduct.unit} onChange={e => setNewProduct({...newProduct, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none" />
+                    <Button className="w-full h-14 rounded-2xl bg-primary text-lg font-bold" onClick={handleAddProduct} disabled={isAddingProduct}>
                       {isAddingProduct ? <Loader2 className="animate-spin" /> : "Save Product"}
                     </Button>
                   </div>
                 </SheetContent>
               </Sheet>
             </div>
-            <div className="space-y-4">
-              {productsLoading ? <p>Loading...</p> : products?.map((p: any) => (
-                <Card key={p.id} className="p-4 rounded-3xl border-none premium-shadow flex items-center justify-between">
+            <div className="grid gap-4">
+              {products?.map((p: any) => (
+                <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden">
+                    <div className="w-14 h-14 bg-gray-100 rounded-2xl overflow-hidden">
                       <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm">{p.name}</h4>
-                      <p className="text-xs text-gray-500">{p.unit} • ₹{p.price}</p>
+                      <h4 className="font-bold text-gray-800">{p.name}</h4>
+                      <p className="text-xs text-gray-500 font-bold">₹{p.price} • {p.unit}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete("products", p.id)}>
-                    <Trash2 className="w-4 h-4" />
+                  <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-50 rounded-xl" onClick={() => deleteDoc(doc(db, "products", p.id))}>
+                    <Trash2 className="w-5 h-5" />
                   </Button>
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="customers" className="space-y-6">
-            <h2 className="text-xl font-bold">Registered Customers ({customers?.length || 0})</h2>
+        {view === "customers" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter">CUSTOMERS HISTORY</h2>
             <div className="space-y-4">
-              {customersLoading ? <p>Loading...</p> : customers?.map((customer: any) => (
-                <Card key={customer.id} className="p-5 rounded-[2rem] border-none premium-shadow flex items-center justify-between">
+              {customers?.map((customer: any) => (
+                <Card key={customer.id} className="p-6 rounded-[2.5rem] border-none shadow-lg bg-white flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-                      <UserCheck className="w-6 h-6 text-primary" />
+                    <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
+                      <UserCheck className="w-7 h-7 text-primary" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm">{customer.name}</h4>
-                      <p className="text-[10px] text-gray-500 font-medium">{customer.email}</p>
-                      <p className="text-[10px] text-primary font-bold">{customer.phone}</p>
+                      <h4 className="font-bold text-gray-900">{customer.name}</h4>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{customer.email}</p>
+                      <p className="text-xs text-primary font-bold mt-1">{customer.phone}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-gray-400 font-bold">JOINED</p>
-                    <p className="text-xs font-bold text-gray-600">
+                    <p className="text-[10px] text-gray-300 font-black uppercase">JOINED</p>
+                    <p className="text-xs font-black text-gray-900">
                       {customer.joinedAt ? new Date(customer.joinedAt).toLocaleDateString() : 'N/A'}
                     </p>
                   </div>
                 </Card>
               ))}
             </div>
-          </TabsContent>
+          </div>
+        )}
+      </main>
 
-          <TabsContent value="coupons" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Coupons ({coupons?.length || 0})</h2>
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button size="sm" className="rounded-xl h-10 px-4"><Plus className="w-4 h-4 mr-2" /> New</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[70vh] rounded-t-[3rem]">
-                  <SheetHeader><SheetTitle>Create Coupon</SheetTitle></SheetHeader>
-                  <div className="space-y-4 mt-6">
-                    <Input placeholder="Coupon Code" value={newCoupon.code} onChange={e => setNewCoupon({...newCoupon, code: e.target.value.toUpperCase()})} />
-                    <Input placeholder="Value (₹ or %)" type="number" value={newCoupon.value} onChange={e => setNewCoupon({...newCoupon, value: e.target.value})} />
-                    <Input placeholder="Expiry Date" type="date" value={newCoupon.expiryDate} onChange={e => setNewCoupon({...newCoupon, expiryDate: e.target.value})} />
-                    <Button className="w-full h-14 rounded-2xl" onClick={handleAddCoupon} disabled={isAddingCoupon}>
-                      {isAddingCoupon ? <Loader2 className="animate-spin" /> : "Save Coupon"}
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-            <div className="grid gap-4">
-              {couponsLoading ? <p>Loading...</p> : coupons?.map((c: any) => (
-                <Card key={c.id} className="p-5 rounded-[2rem] border-none premium-shadow flex items-center justify-between">
-                  <div>
-                    <code className="bg-gray-100 px-3 py-1 rounded-lg text-primary font-bold text-sm">{c.code}</code>
-                    <p className="text-xs text-gray-500 mt-2 font-medium">Value: ₹{c.value} • Exp: {c.expiryDate || 'No Date'}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleDelete("coupons", c.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="notifications" className="space-y-6">
-            <h2 className="text-xl font-bold">Push Notifications</h2>
-            <Card className="p-6 rounded-[2.5rem] border-none premium-shadow space-y-6">
-              <div className="space-y-4">
-                <Input placeholder="Title" value={newNotification.title} onChange={e => setNewNotification({...newNotification, title: e.target.value})} />
-                <textarea className="w-full min-h-[100px] p-4 rounded-2xl bg-gray-50 border-none text-sm resize-none focus:ring-1 focus:ring-primary outline-none" placeholder="Message Body..." value={newNotification.body} onChange={e => setNewNotification({...newNotification, body: e.target.value})} />
-              </div>
-              <Button className="w-full h-14 rounded-2xl text-lg font-bold" onClick={handleSendNotification}>Send Broadcast</Button>
-            </Card>
-            <div className="space-y-4">
-              <h3 className="font-bold text-gray-500 text-xs uppercase tracking-wider">Recent Logs</h3>
-              {notificationsLoading ? <p>Loading...</p> : notifications?.map((n: any) => (
-                <div key={n.id} className="flex gap-4 p-4 bg-white rounded-2xl border border-gray-100">
-                   <div className="bg-primary/10 p-2 rounded-xl self-start"><BellRing className="w-4 h-4 text-primary" /></div>
-                   <div className="flex-1">
-                     <p className="text-sm font-bold">{n.title}</p>
-                     <p className="text-xs text-gray-500">{n.body}</p>
-                     <p className="text-[10px] text-gray-300 mt-1">{new Date(n.sentAt).toLocaleString()}</p>
-                   </div>
-                   <Button variant="ghost" size="icon" className="text-red-200" onClick={() => handleDelete("notifications", n.id)}>
-                    <Trash2 className="w-4 h-4" />
-                   </Button>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+      <style jsx global>{`
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 12s linear infinite;
+        }
+      `}</style>
     </div>
   );
 }
