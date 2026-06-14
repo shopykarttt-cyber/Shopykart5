@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { NotificationHandler } from '@/components/notifications/notification-handler';
+import { CartProvider } from '@/components/cart/cart-provider';
 
 export const metadata: Metadata = {
   title: 'Grosify - Freshness Delivered',
@@ -24,11 +25,13 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background">
         <FirebaseClientProvider>
-          <NotificationHandler />
-          <main className="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl bg-white overflow-x-hidden pb-20">
-            {children}
-          </main>
-          <Toaster />
+          <CartProvider>
+            <NotificationHandler />
+            <main className="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl bg-white overflow-x-hidden pb-20">
+              {children}
+            </main>
+            <Toaster />
+          </CartProvider>
         </FirebaseClientProvider>
       </body>
     </html>

@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 import { MapPin, Search, Bell, ShoppingBag, ChevronDown, Camera, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { CartSheet } from "@/components/cart/cart-sheet";
+import { useCart } from "@/components/cart/cart-provider";
 
 export function TopBar() {
   const router = useRouter();
   const [logoClicks, setLogoClicks] = useState(0);
+  const { items } = useCart();
 
   const handleLogoClick = () => {
     const nextClicks = logoClicks + 1;
@@ -24,7 +27,6 @@ export function TopBar() {
 
   return (
     <div className="bg-black text-white px-6 pt-3 pb-3 space-y-2 sticky top-0 z-40 rounded-b-[2rem] shadow-2xl">
-      {/* Top Row: Location and Action Icons */}
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2 group cursor-pointer">
           <div className="bg-[#1E1E1E] p-1.5 rounded-xl shadow-inner">
@@ -44,14 +46,19 @@ export function TopBar() {
           <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl bg-[#1E1E1E] hover:bg-[#2E2E2E] text-white">
             <Bell className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl bg-[#1E1E1E] hover:bg-[#2E2E2E] text-white relative">
-            <ShoppingBag className="w-4 h-4" />
-            <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-black text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-black">2</span>
-          </Button>
+          <CartSheet>
+            <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl bg-[#1E1E1E] hover:bg-[#2E2E2E] text-white relative">
+              <ShoppingBag className="w-4 h-4" />
+              {items.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-black text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-black animate-in zoom-in">
+                  {items.length}
+                </span>
+              )}
+            </Button>
+          </CartSheet>
         </div>
       </div>
 
-      {/* Middle Row: Brand Logo */}
       <div className="flex justify-center">
         <div 
           onClick={handleLogoClick}
@@ -67,7 +74,6 @@ export function TopBar() {
         </div>
       </div>
       
-      {/* Bottom Row: Search Bar */}
       <div className="relative group">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 transition-colors group-focus-within:text-[#D4AF37]" />
         <Input 
