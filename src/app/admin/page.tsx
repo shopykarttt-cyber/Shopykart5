@@ -25,8 +25,6 @@ import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import {
   Sheet,
   SheetContent,
@@ -176,9 +174,7 @@ export default function AdminPage() {
         setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imageData: "" });
         setIsAddingProduct(false);
       })
-      .catch(async () => {
-        setIsAddingProduct(false);
-      });
+      .catch(() => setIsAddingProduct(false));
   };
 
   const handleAddCategory = () => {
@@ -213,6 +209,27 @@ export default function AdminPage() {
         setIsAddingBanner(false);
       })
       .catch(() => setIsAddingBanner(false));
+  };
+
+  const handleAddCoupon = () => {
+    if (!couponForm.code || !couponForm.value) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Code and Value are required." });
+      return;
+    }
+    setIsAddingCoupon(true);
+    const data = {
+      code: couponForm.code.toUpperCase(),
+      value: Number(couponForm.value),
+      discountType: couponForm.type,
+      createdAt: serverTimestamp()
+    };
+    addDoc(collection(db, "coupons"), data)
+      .then(() => {
+        toast({ title: "Coupon Added!" });
+        setCouponForm({ code: "", value: "", type: "fixed" });
+        setIsAddingCoupon(false);
+      })
+      .catch(() => setIsAddingCoupon(false));
   };
 
   const menuItems = [
@@ -479,7 +496,7 @@ export default function AdminPage() {
                   <img src={b.imageUrl} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(b, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
                   </div>
                 </Card>
               ))}
