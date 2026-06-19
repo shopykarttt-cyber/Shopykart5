@@ -15,7 +15,8 @@
         "imageUrl": { "type": "string" },
         "mfgDate": { "type": "string", "format": "date" },
         "expiryDate": { "type": "string", "format": "date" },
-        "stock": { "type": "number" }
+        "stock": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "mrp", "price", "unit", "category"]
     },
@@ -25,10 +26,36 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "icon": { "type": "string" },
-        "color": { "type": "string" }
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]
+    },
+    "Banner": {
+      "title": "Banner",
+      "description": "Promotional banners for home screen",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["imageUrl"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer orders",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Processing", "Shipped", "Delivered", "Cancelled"] },
+        "address": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Coupon": {
       "title": "Coupon",
@@ -38,9 +65,7 @@
         "code": { "type": "string" },
         "discountType": { "type": "string", "enum": ["fixed", "percentage"] },
         "value": { "type": "number" },
-        "minOrder": { "type": "number" },
-        "description": { "type": "string" },
-        "expiryDate": { "type": "string", "format": "date" }
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["code", "discountType", "value"]
     },
@@ -57,18 +82,6 @@
         "joinedAt": { "type": "string", "format": "date" }
       },
       "required": ["name", "email"]
-    },
-    "Notification": {
-      "title": "Notification",
-      "description": "Push notification logs",
-      "type": "object",
-      "properties": {
-        "title": { "type": "string" },
-        "body": { "type": "string" },
-        "sentAt": { "type": "string", "format": "date-time" },
-        "target": { "type": "string", "enum": ["all", "segments"] }
-      },
-      "required": ["title", "body"]
     }
   },
   "auth": {
@@ -83,6 +96,14 @@
       "schema": "Category",
       "description": "Store for categories"
     },
+    "/banners/{bannerId}": {
+      "schema": "Banner",
+      "description": "Store for promotional banners"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Store for customer orders"
+    },
     "/coupons/{couponId}": {
       "schema": "Coupon",
       "description": "Store for coupons"
@@ -90,10 +111,6 @@
     "/customers/{customerId}": {
       "schema": "Customer",
       "description": "Store for customer profiles"
-    },
-    "/notifications/{notificationId}": {
-      "schema": "Notification",
-      "description": "Store for notification logs"
     }
   }
 }
