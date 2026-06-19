@@ -16,14 +16,16 @@ import {
   Ticket,
   History,
   ShoppingBag,
-  Flag
+  Flag,
+  FileUp,
+  AlertCircle
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
   Sheet,
@@ -66,6 +68,7 @@ export default function AdminPage() {
   const { user, loading: authLoading } = useUser();
   const [view, setView] = useState("dashboard");
   const productFileRef = useRef<HTMLInputElement>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +91,7 @@ export default function AdminPage() {
   const { data: banners } = useCollection(bannersQuery);
 
   const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [isImportingCsv, setIsImportingCsv] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
   const [isAddingBanner, setIsAddingBanner] = useState(false);
@@ -137,20 +141,75 @@ export default function AdminPage() {
     }
   };
 
-  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const base64 = await handleFileToBase64(file);
-      setCategoryForm({ ...categoryForm, imageData: base64 });
-    }
-  };
+    if (!file) return;
 
-  const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const base64 = await handleFileToBase64(file);
-      setBannerForm({ ...bannerForm, imageData: base64 });
-    }
+    setIsImportingCsv(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const rows = text.split('\n').map(row => row.split(','));
+      
+      // Header check: name, mrp, price, unit, category, description
+      const headers = rows[0].map(h => h.trim().toLowerCase());
+      const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
+
+      if (dataRows.length === 0) {
+        toast({ variant: "destructive", title: "Empty File", description: "No valid product rows found." });
+        setIsImportingCsv(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const row of dataRows) {
+        const name = row[0]?.trim();
+        const mrp = parseFloat(row[1]?.trim());
+        const price = parseFloat(row[2]?.trim());
+        const unit = row[3]?.trim();
+        const category = row[4]?.trim();
+        const description = row[5]?.trim() || "";
+
+        // Basic Validation
+        if (!name || isNaN(mrp) || isNaN(price) || !category) {
+          errorCount++;
+          continue;
+        }
+
+        // Category Check
+        const categoryExists = categories?.some((cat: any) => cat.name.toLowerCase() === category.toLowerCase());
+        if (!categoryExists) {
+          errorCount++;
+          continue;
+        }
+
+        try {
+          await addDoc(collection(db, "products"), {
+            name,
+            mrp,
+            price,
+            unit,
+            category,
+            description,
+            imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
+            createdAt: serverTimestamp()
+          });
+          successCount++;
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      toast({ 
+        title: "Import Complete", 
+        description: `Successfully added ${successCount} products. ${errorCount} failed.` 
+      });
+      setIsImportingCsv(false);
+      if (csvFileRef.current) csvFileRef.current.value = "";
+    };
+    reader.readAsText(file);
   };
 
   const handleAddProduct = () => {
@@ -338,88 +397,71 @@ export default function AdminPage() {
           </div>
         )}
 
-        {view === "orders" && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">LIVE ORDERS</h2>
-            <div className="space-y-4">
-              {orders?.length === 0 ? (
-                <div className="py-20 text-center opacity-30 font-black italic">NO ORDERS YET</div>
-              ) : orders?.map((order: any) => (
-                <Card key={order.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex gap-4 items-center">
-                      <div className="bg-gray-50 p-3 rounded-2xl"><ShoppingBag className="w-6 h-6 text-primary" /></div>
-                      <div>
-                        <h4 className="font-bold text-gray-900">{order.customerName || "User"}</h4>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{new Date(order.createdAt?.toDate?.() || Date.now()).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <Badge className="bg-primary text-white font-black italic uppercase text-[10px]">{order.status || "Processing"}</Badge>
-                  </div>
-                  <div className="pt-4 border-t border-gray-50">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Items</p>
-                    <div className="space-y-1">
-                      {order.items?.map((it: any, idx: number) => (
-                        <div key={idx} className="flex justify-between text-xs font-bold text-gray-600">
-                          <span>{it.name} x {it.quantity}</span>
-                          <span>₹{it.price * it.quantity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Paid</span>
-                    <span className="text-xl font-black italic">₹{order.total}</span>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
         {view === "products" && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center gap-2">
               <h2 className="text-2xl font-black italic uppercase">PRODUCTS</h2>
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0">
-                  <ScrollArea className="h-full px-8 py-8">
-                    <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
-                    <div className="space-y-6 pb-20">
-                      <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer overflow-hidden relative group">
-                        {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : (
-                          <>
-                            <ImageIcon className="w-10 h-10 text-gray-300 group-hover:text-primary transition-colors" />
-                            <p className="text-xs font-bold text-gray-400">TAP TO OPEN GALLERY</p>
-                          </>
-                        )}
-                        <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
+              <div className="flex gap-2">
+                <input type="file" ref={csvFileRef} onChange={handleCsvUpload} className="hidden" accept=".csv" />
+                <Button 
+                  variant="outline"
+                  onClick={() => csvFileRef.current?.click()}
+                  disabled={isImportingCsv}
+                  className="rounded-2xl border-2 border-dashed border-gray-200 h-12 gap-2 font-bold px-4"
+                >
+                  {isImportingCsv ? <Loader2 className="animate-spin w-4 h-4" /> : <FileUp className="w-4 h-4" />}
+                  Bulk Import
+                </Button>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0">
+                    <ScrollArea className="h-full px-8 py-8">
+                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
+                      <div className="space-y-6 pb-20">
+                        <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer overflow-hidden relative group">
+                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : (
+                            <>
+                              <ImageIcon className="w-10 h-10 text-gray-300 group-hover:text-primary transition-colors" />
+                              <p className="text-xs font-bold text-gray-400">TAP TO OPEN GALLERY</p>
+                            </>
+                          )}
+                          <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
+                        </div>
+                        <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        </div>
+                        <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
+                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold">
+                            <SelectValue placeholder="Select Category *" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl border-none shadow-2xl">
+                            {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct} disabled={isAddingProduct}>
+                          {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Live"}
+                        </Button>
                       </div>
-                      <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      </div>
-                      <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
-                        <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold">
-                          <SelectValue placeholder="Select Category *" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl border-none shadow-2xl">
-                          {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct} disabled={isAddingProduct}>
-                        {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Live"}
-                      </Button>
-                    </div>
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
+
+            <div className="bg-blue-50/50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100 mb-2">
+              <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5" />
+              <div className="text-xs text-blue-600 font-medium">
+                <p className="font-bold mb-1 uppercase tracking-tight">CSV Format Guide:</p>
+                <p>name, mrp, price, unit, category, description</p>
+                <p className="mt-1 opacity-70 italic">* Make sure categories match exactly with existing ones.</p>
+              </div>
+            </div>
+
             <div className="grid gap-4">
               {products?.map((p: any) => (
                 <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
@@ -496,7 +538,7 @@ export default function AdminPage() {
                   <img src={b.imageUrl} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(b, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
                   </div>
                 </Card>
               ))}
