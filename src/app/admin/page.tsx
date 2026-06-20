@@ -66,6 +66,7 @@ export default function AdminPage() {
   const db = useFirestore();
   const { user, loading: authLoading } = useUser();
   const [view, setView] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const productFileRef = useRef<HTMLInputElement>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
@@ -325,35 +326,37 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
       <header className="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 rounded-b-3xl">
         <div className="flex items-center gap-3">
-          <Sheet>
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full hover:bg-white/10">
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] p-6 bg-white border-none shadow-2xl">
-              <SheetHeader className="text-left mb-8">
+            <SheetContent side="left" className="w-[300px] p-0 bg-white border-none shadow-2xl flex flex-col h-full">
+              <SheetHeader className="text-left p-6 mb-4">
                 <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
                   GROSI<span className="text-primary">FY</span> <span className="text-xs text-gray-400">ADMIN</span>
                 </SheetTitle>
               </SheetHeader>
-              <div className="space-y-2">
-                {menuItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => { setView(item.id); }}
-                    className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'}`}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-bold">{item.label}</span>
-                  </button>
-                ))}
-                <div className="pt-8">
-                  <Button variant="ghost" onClick={() => router.push("/")} className="w-full justify-start gap-4 px-4 py-6 text-gray-400 font-bold">
-                    <ArrowLeft className="w-5 h-5" /> Back to App
-                  </Button>
+              <ScrollArea className="flex-1 px-6">
+                <div className="space-y-2 pb-10">
+                  {menuItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => { setView(item.id); setSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span className="font-bold">{item.label}</span>
+                    </button>
+                  ))}
+                  <div className="pt-8">
+                    <Button variant="ghost" onClick={() => router.push("/")} className="w-full justify-start gap-4 px-4 py-6 text-gray-400 font-bold">
+                      <ArrowLeft className="w-5 h-5" /> Back to App
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
             </SheetContent>
           </Sheet>
           <div className="flex flex-col">
