@@ -8,30 +8,16 @@ import { BannerSlider } from "@/components/home/banner-slider";
 import { CategoryScroller } from "@/components/home/category-scroller";
 import { ProductCard } from "@/components/home/product-card";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
-import { SplashScreen } from "@/components/ui/splash-screen";
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { useState, useEffect } from "react";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Package } from "lucide-react";
 
 export default function Home() {
-  const [showSplash, setShowSplash] = useState(true);
   const db = useFirestore();
 
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(10)), [db]);
   const { data: liveProducts, loading: productsLoading } = useCollection(productsQuery);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (showSplash) {
-    return <SplashScreen />;
-  }
 
   return (
     <AuthGuard>
