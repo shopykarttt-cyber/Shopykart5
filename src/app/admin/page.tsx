@@ -14,18 +14,17 @@ import {
   Grid,
   Image as ImageIcon,
   Ticket,
-  History,
-  ShoppingBag,
   Flag,
   FileUp,
-  AlertCircle
+  AlertCircle,
+  ShoppingBag
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
   Sheet,
@@ -141,6 +140,22 @@ export default function AdminPage() {
     }
   };
 
+  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await handleFileToBase64(file);
+      setCategoryForm({ ...categoryForm, imageData: base64 });
+    }
+  };
+
+  const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const base64 = await handleFileToBase64(file);
+      setBannerForm({ ...bannerForm, imageData: base64 });
+    }
+  };
+
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,8 +166,6 @@ export default function AdminPage() {
       const text = event.target?.result as string;
       const rows = text.split('\n').map(row => row.split(','));
       
-      // Header check: name, mrp, price, unit, category, description
-      const headers = rows[0].map(h => h.trim().toLowerCase());
       const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
 
       if (dataRows.length === 0) {
@@ -172,13 +185,11 @@ export default function AdminPage() {
         const category = row[4]?.trim();
         const description = row[5]?.trim() || "";
 
-        // Basic Validation
         if (!name || isNaN(mrp) || isNaN(price) || !category) {
           errorCount++;
           continue;
         }
 
-        // Category Check
         const categoryExists = categories?.some((cat: any) => cat.name.toLowerCase() === category.toLowerCase());
         if (!categoryExists) {
           errorCount++;
@@ -237,7 +248,10 @@ export default function AdminPage() {
   };
 
   const handleAddCategory = () => {
-    if (!categoryForm.name || !categoryForm.imageData) return;
+    if (!categoryForm.name || !categoryForm.imageData) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "Name and Icon image are required." });
+      return;
+    }
     setIsAddingCategory(true);
     const data = {
       name: categoryForm.name,
@@ -254,7 +268,10 @@ export default function AdminPage() {
   };
 
   const handleAddBanner = () => {
-    if (!bannerForm.imageData) return;
+    if (!bannerForm.imageData) {
+      toast({ variant: "destructive", title: "Missing Image", description: "Please select a banner image." });
+      return;
+    }
     setIsAddingBanner(true);
     const data = {
       title: bannerForm.title || "Promotional Offer",
@@ -298,7 +315,7 @@ export default function AdminPage() {
     { id: "categories", label: "Category", icon: Grid },
     { id: "banners", label: "Banners", icon: Flag },
     { id: "coupons", label: "Coupons", icon: Ticket },
-    { id: "customers", label: "Customer List", icon: History },
+    { id: "customers", label: "Customer List", icon: Users },
   ];
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -324,7 +341,7 @@ export default function AdminPage() {
                 {menuItems.map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => setView(item.id)}
+                    onClick={() => { setView(item.id); }}
                     className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'}`}
                   >
                     <item.icon className="w-5 h-5" />
@@ -421,7 +438,7 @@ export default function AdminPage() {
                       <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
                       <div className="space-y-6 pb-20">
                         <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer overflow-hidden relative group">
-                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : (
+                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
                             <>
                               <ImageIcon className="w-10 h-10 text-gray-300 group-hover:text-primary transition-colors" />
                               <p className="text-xs font-bold text-gray-400">TAP TO OPEN GALLERY</p>
@@ -466,7 +483,7 @@ export default function AdminPage() {
               {products?.map((p: any) => (
                 <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" />
+                    <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" alt={p.name} />
                     <div>
                       <h4 className="font-bold text-gray-800">{p.name}</h4>
                       <p className="text-[10px] font-black text-primary uppercase">{p.category}</p>
@@ -487,7 +504,7 @@ export default function AdminPage() {
             <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
             <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
               <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden relative">
-                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : (
+                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
                   <>
                     <ImageIcon className="w-8 h-8 text-gray-300" />
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Upload Icon</p>
@@ -505,7 +522,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-2 gap-4">
               {categories?.map((cat: any) => (
                 <Card key={cat.id} className="p-5 rounded-[2.5rem] border-none shadow-lg bg-white flex flex-col items-center relative text-center">
-                  <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" />
+                  <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" alt={cat.name} />
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-4 right-4 text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                 </Card>
@@ -519,7 +536,7 @@ export default function AdminPage() {
             <h2 className="text-2xl font-black italic uppercase">HOME BANNERS</h2>
             <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
               <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden relative">
-                {bannerForm.imageData ? <img src={bannerForm.imageData} className="w-full h-full object-cover" /> : (
+                {bannerForm.imageData ? <img src={bannerForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
                   <>
                     <ImageIcon className="w-10 h-10 text-gray-300" />
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Banner Image</p>
@@ -535,7 +552,7 @@ export default function AdminPage() {
             <div className="space-y-4">
               {banners?.map((b: any) => (
                 <Card key={b.id} className="relative h-32 rounded-[2rem] overflow-hidden group shadow-xl">
-                  <img src={b.imageUrl} className="w-full h-full object-cover" />
+                  <img src={b.imageUrl} className="w-full h-full object-cover" alt={b.title} />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
                     <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
@@ -570,6 +587,37 @@ export default function AdminPage() {
                     <p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "orders" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black italic uppercase">LIVE ORDERS</h2>
+            <div className="space-y-4">
+              {orders?.map((order: any) => (
+                <Card key={order.id} className="p-6 rounded-[2.5rem] border-none shadow-lg bg-white space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{new Date(order.createdAt?.seconds * 1000).toLocaleString()}</p>
+                    </div>
+                    <Badge className="bg-orange-100 text-orange-600 border-none font-black uppercase tracking-widest">{order.status}</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {order.items?.map((item: any, i: number) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-gray-500">{item.name} x {item.quantity}</span>
+                        <span className="font-bold">₹{item.price * item.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="pt-4 border-t flex justify-between items-center">
+                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</div>
+                    <div className="text-xl font-black italic">₹{order.total}</div>
+                  </div>
                 </Card>
               ))}
             </div>
