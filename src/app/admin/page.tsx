@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { 
   LayoutDashboard, 
   Package, 
@@ -71,6 +71,13 @@ export default function AdminPage() {
   const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/");
+    }
+  }, [user, authLoading, router]);
 
   const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
   const { data: customers } = useCollection(customersQuery);
@@ -320,7 +327,7 @@ export default function AdminPage() {
   ];
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
-  if (!user) { router.push("/"); return null; }
+  if (!user) return null; // Let the useEffect handle redirection
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
