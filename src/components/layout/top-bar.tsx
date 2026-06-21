@@ -11,17 +11,16 @@ import { useCart } from "@/components/cart/cart-provider";
 
 export function TopBar() {
   const router = useRouter();
-  const [logoClicks, setLogoClicks] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
 
-  const handleLogoClick = () => {
-    const nextClicks = logoClicks + 1;
-    
-    if (nextClicks === 5) {
-      router.push("/admin");
-      setLogoClicks(0);
-    } else {
-      setLogoClicks(nextClicks);
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const query = searchQuery.toLowerCase().trim();
+      if (query === 'admin/dashboard') {
+        router.push('/admin');
+        setSearchQuery("");
+      }
     }
   };
 
@@ -50,7 +49,7 @@ export function TopBar() {
             <Button variant="ghost" size="icon" className="w-8 h-8 rounded-xl bg-[#1E1E1E] hover:bg-[#2E2E2E] text-white relative">
               <ShoppingBag className="w-4 h-4" />
               {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#D4AF37] text-black text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-black animate-in zoom-in">
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-[8px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-black animate-in zoom-in">
                   {items.length}
                 </span>
               )}
@@ -61,12 +60,12 @@ export function TopBar() {
 
       <div className="flex justify-center">
         <div 
-          onClick={handleLogoClick}
+          onClick={() => router.push('/')}
           className="relative cursor-pointer select-none inline-flex flex-col items-center px-6 py-1 border border-[#2E2E2E] rounded-[1.5rem] bg-gradient-to-b from-[#0F0F0F] to-black shadow-[0_5px_15px_rgba(0,0,0,0.6)] active:scale-95 transition-transform"
         >
            <div className="flex items-baseline leading-none">
              <span className="text-lg font-black italic tracking-tighter text-white uppercase">GROSI</span>
-             <span className="text-lg font-black italic tracking-tighter text-[#D4AF37] uppercase">FY</span>
+             <span className="text-lg font-black italic tracking-tighter text-primary uppercase">FY</span>
            </div>
            <span className="text-[5px] font-black tracking-[0.3em] text-gray-600 uppercase mt-0.5">
              QUALITY FIRST
@@ -75,9 +74,12 @@ export function TopBar() {
       </div>
       
       <div className="relative group">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 transition-colors group-focus-within:text-[#D4AF37]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 transition-colors group-focus-within:text-primary" />
         <Input 
           placeholder="Search Products..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
           className="pl-10 pr-16 h-10 bg-[#1E1E1E] border-none rounded-xl focus-visible:ring-1 focus-visible:ring-[#3E3E3E] text-white placeholder:text-gray-600 text-xs font-medium"
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-500">
