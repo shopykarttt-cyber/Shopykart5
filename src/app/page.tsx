@@ -99,22 +99,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Popular Tags */}
-        <div className="px-6 flex gap-2.5 overflow-x-auto hide-scrollbar mb-8">
-          <button className="bg-black text-white px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest italic shrink-0 shadow-lg">
-             All Items
-          </button>
-          <button className="bg-gray-50 border border-gray-100 text-gray-500 px-5 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-widest shrink-0">Organic</button>
-          <button className="bg-gray-50 border border-gray-100 text-gray-500 px-5 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-widest shrink-0">Fresh Pick</button>
-        </div>
-
-        <div className="px-6 pb-20 space-y-8">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight italic">
-              {selectedCategory === "For you" ? "Popular Products" : selectedCategory}
-            </h2>
-          </div>
-          
+        {/* Product Grid Section */}
+        <div className="px-6 pb-20 pt-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
