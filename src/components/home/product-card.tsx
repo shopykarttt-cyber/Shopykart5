@@ -2,7 +2,7 @@
 "use client";
 
 import Image from "next/image";
-import { Plus, Heart, Star, Clock, ChevronRight } from "lucide-react";
+import { Plus, Heart, Star, Clock, ChevronRight, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useCart } from "@/components/cart/cart-provider";
@@ -21,7 +21,11 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ id, name, price, mrp, unit, imageId, category, discount }: ProductCardProps) {
-  const { addItem } = useCart();
+  const { items, addItem, removeItem, updateQuantity } = useCart();
+  
+  // Find if item is already in cart
+  const cartItem = items.find(i => i.id === id);
+  const quantity = cartItem ? cartItem.quantity : 0;
 
   const handleAddToCart = () => {
     addItem({
@@ -68,14 +72,38 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
           />
         </div>
 
-        {/* Add Button */}
+        {/* Add Button / Quantity Selector */}
         <div className="absolute -bottom-1.5 right-3 z-20">
-          <Button 
-            onClick={handleAddToCart}
-            className="bg-white hover:bg-gray-50 text-[#0C831F] border border-gray-200 h-8 px-4 rounded-xl font-black text-[10px] uppercase shadow-md flex items-center gap-1"
-          >
-            ADD
-          </Button>
+          {quantity > 0 ? (
+            <div className="bg-white border border-gray-200 h-8 px-2 rounded-xl shadow-md flex items-center justify-between gap-3 min-w-[80px] animate-in fade-in zoom-in-95 duration-200">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  quantity === 1 ? removeItem(id) : updateQuantity(id, -1);
+                }} 
+                className="text-[#0C831F] p-1 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <Minus className="w-3.5 h-3.5 stroke-[3px]" />
+              </button>
+              <span className="font-black text-[#0C831F] text-xs w-4 text-center">{quantity}</span>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  updateQuantity(id, 1);
+                }} 
+                className="text-[#0C831F] p-1 hover:bg-gray-50 rounded-md transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3px]" />
+              </button>
+            </div>
+          ) : (
+            <Button 
+              onClick={handleAddToCart}
+              className="bg-white hover:bg-gray-50 text-[#0C831F] border border-gray-200 h-8 px-4 rounded-xl font-black text-[10px] uppercase shadow-md flex items-center gap-1"
+            >
+              ADD
+            </Button>
+          )}
         </div>
 
         {/* Unit Indicator */}
