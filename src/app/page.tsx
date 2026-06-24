@@ -46,8 +46,8 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Gradient and Rounded Edges */}
-        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[3rem] shadow-sm pb-10">
+        {/* Top Section with Gradient and Slightly Rounded Edges */}
+        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[2rem] shadow-sm pb-10">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
@@ -55,7 +55,7 @@ export default function Home() {
           <BannerSlider />
         </div>
 
-        {/* Feature Bar - Floating over the rounded edge */}
+        {/* Feature Bar - Floating over the edges */}
         <div className="px-5 -mt-8 relative z-10">
           <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-50">
             <div className="flex items-center gap-1.5">
