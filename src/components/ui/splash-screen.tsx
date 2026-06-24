@@ -35,7 +35,7 @@ export function SplashScreen() {
 
       <div className="absolute bottom-10 w-full text-center animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-500">
         <p className="text-[7px] font-black tracking-[0.3em] text-gray-700 uppercase">
-          FRESHNESS DELIVERED
+          Handicrafted by Rahul
         </p>
       </div>
       
