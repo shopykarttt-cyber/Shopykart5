@@ -79,7 +79,26 @@ const smartBasketAssistantFlow = ai.defineFlow(
     outputSchema: SmartBasketAssistantOutputSchema,
   },
   async input => {
-    const {output} = await smartBasketAssistantPrompt(input);
-    return output!;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const delay = 2000;
+
+    while (attempts < maxAttempts) {
+      try {
+        const {output} = await smartBasketAssistantPrompt(input);
+        return output!;
+      } catch (error: any) {
+        attempts++;
+        const isServiceUnavailable = error.message?.includes('503') || error.message?.includes('high demand');
+        
+        if (attempts >= maxAttempts || !isServiceUnavailable) {
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, delay * attempts));
+      }
+    }
+    throw new Error('Failed to generate suggestions due to high service demand. Please try again in a moment.');
   }
 );
