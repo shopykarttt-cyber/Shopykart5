@@ -10,36 +10,15 @@ import { ProductCard } from "@/components/home/product-card";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { Package, Star, ShieldCheck, Truck } from "lucide-react";
+import { Package, Star } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-
-export function FeatureBar() {
-  return (
-    <div className="bg-[#FF6B00] mx-4 rounded-2xl py-3 px-5 flex justify-between items-center text-white shadow-xl -mt-4 mb-8 relative z-10 border border-white/10">
-      <div className="flex items-center gap-2.5">
-        <Star className="w-4 h-4 text-white fill-current" />
-        <span className="text-[10px] font-black leading-none uppercase tracking-tighter">Top Rated<br/>Products</span>
-      </div>
-      <div className="h-6 w-[1px] bg-white/20" />
-      <div className="flex items-center gap-2.5">
-        <ShieldCheck className="w-4 h-4 text-white" />
-        <span className="text-[10px] font-black leading-none uppercase tracking-tighter">Secure<br/>Payment</span>
-      </div>
-      <div className="h-6 w-[1px] bg-white/20" />
-      <div className="flex items-center gap-2.5">
-        <Truck className="w-4 h-4 text-white" />
-        <span className="text-[10px] font-black leading-none uppercase tracking-tighter">Cash<br/>on Delivery</span>
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const db = useFirestore();
   const [selectedCategory, setSelectedCategory] = useState("For you");
 
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(50)), [db]);
-  const { data: liveProducts, loading: productsLoading } = useCollection(productsQuery);
+  const { data: liveProducts } = useCollection(productsQuery);
 
   const topRatedProducts = useMemo(() => {
     if (!liveProducts) return [];
@@ -66,11 +45,9 @@ export default function Home() {
           <div className="h-4" /> {/* Spacer for transition */}
         </div>
         
-        <FeatureBar />
-
         {/* Top Rated Section */}
         {topRatedProducts.length > 0 && (
-          <div className="px-6 mb-10">
+          <div className="px-6 mb-10 mt-6">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
                 <div className="bg-yellow-400 p-1.5 rounded-lg">
@@ -114,7 +91,7 @@ export default function Home() {
                   imageId={product.imageUrl}
                 />
               ))
-            ) : !productsLoading && (
+            ) : (
               <div className="col-span-full py-28 text-center space-y-4">
                  <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto border border-gray-100">
                    <Package className="w-10 h-10 text-gray-200" />

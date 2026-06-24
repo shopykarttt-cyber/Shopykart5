@@ -8,7 +8,6 @@ import {
   Users, 
   ArrowLeft,
   Plus,
-  Loader2,
   Trash2,
   Menu,
   Grid,
@@ -69,6 +68,8 @@ export default function AdminPage() {
   const { user, loading: authLoading } = useUser();
   const [view, setView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
+  
   const productFileRef = useRef<HTMLInputElement>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
@@ -98,12 +99,6 @@ export default function AdminPage() {
   const bannersQuery = useMemo(() => query(collection(db, "banners"), orderBy("createdAt", "desc")), [db]);
   const { data: banners } = useCollection(bannersQuery);
 
-  const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [isImportingCsv, setIsImportingCsv] = useState(false);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
-  const [isAddingBanner, setIsAddingBanner] = useState(false);
-  
   const [productForm, setProductForm] = useState({
     name: "",
     mrp: "",
@@ -168,7 +163,6 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsImportingCsv(true);
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
@@ -176,8 +170,6 @@ export default function AdminPage() {
       const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
 
       let successCount = 0;
-      let errorCount = 0;
-
       for (const row of dataRows) {
         const name = row[0]?.trim();
         const mrp = parseFloat(row[1]?.trim());
@@ -186,26 +178,17 @@ export default function AdminPage() {
         const category = row[4]?.trim();
         const description = row[5]?.trim() || "";
 
-        if (!name || isNaN(mrp) || isNaN(price) || !category) {
-          errorCount++;
-          continue;
-        }
-
-        try {
-          await addDoc(collection(db, "products"), {
+        if (name && !isNaN(mrp) && !isNaN(price) && category) {
+          addDoc(collection(db, "products"), {
             name, mrp, price, unit, category, description,
             isTopRated: false,
             imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
             createdAt: serverTimestamp()
           });
           successCount++;
-        } catch (err) {
-          errorCount++;
         }
       }
-
-      toast({ title: "Import Complete", description: `Added ${successCount} products. ${errorCount} failed.` });
-      setIsImportingCsv(false);
+      toast({ title: "Importing Products", description: `Started adding ${successCount} products.` });
     };
     reader.readAsText(file);
   };
@@ -216,7 +199,6 @@ export default function AdminPage() {
       return;
     }
     
-    setIsAddingProduct(true);
     const data = {
       ...productForm,
       mrp: Number(productForm.mrp),
@@ -229,38 +211,30 @@ export default function AdminPage() {
       .then(() => {
         toast({ title: "Product Live!" });
         setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
-        setIsAddingProduct(false);
-      })
-      .catch(() => setIsAddingProduct(false));
+        setIsProductSheetOpen(false);
+      });
   };
 
   const handleAddCategory = () => {
     if (!categoryForm.name || !categoryForm.imageData) return;
-    setIsAddingCategory(true);
     addDoc(collection(db, "categories"), { ...categoryForm, createdAt: serverTimestamp() })
       .then(() => {
         toast({ title: "Category Created" });
         setCategoryForm({ name: "", imageData: "" });
-        setIsAddingCategory(false);
-      })
-      .catch(() => setIsAddingCategory(false));
+      });
   };
 
   const handleAddBanner = () => {
     if (!bannerForm.imageData) return;
-    setIsAddingBanner(true);
     addDoc(collection(db, "banners"), { ...bannerForm, createdAt: serverTimestamp() })
       .then(() => {
         toast({ title: "Banner Uploaded" });
         setBannerForm({ title: "", imageData: "" });
-        setIsAddingBanner(false);
-      })
-      .catch(() => setIsAddingBanner(false));
+      });
   };
 
   const handleAddCoupon = () => {
     if (!couponForm.code || !couponForm.value) return;
-    setIsAddingCoupon(true);
     addDoc(collection(db, "coupons"), {
       code: couponForm.code.toUpperCase(),
       value: Number(couponForm.value),
@@ -269,8 +243,7 @@ export default function AdminPage() {
     }).then(() => {
       toast({ title: "Coupon Added!" });
       setCouponForm({ code: "", value: "", type: "fixed" });
-      setIsAddingCoupon(false);
-    }).catch(() => setIsAddingCoupon(false));
+    });
   };
 
   const menuItems = [
@@ -368,8 +341,8 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">PRODUCTS</h2>
               <div className="flex gap-2">
                 <input type="file" ref={csvFileRef} onChange={handleCsvUpload} className="hidden" accept=".csv" />
-                <Button variant="outline" onClick={() => csvFileRef.current?.click()} disabled={isImportingCsv} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
-                <Sheet>
+                <Button variant="outline" onClick={() => csvFileRef.current?.click()} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
+                <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
                   <SheetTrigger asChild>
                     <Button className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                   </SheetTrigger>
@@ -406,8 +379,8 @@ export default function AdminPage() {
                           />
                         </div>
 
-                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct} disabled={isAddingProduct}>
-                          {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Live"}
+                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
+                          Publish Live
                         </Button>
                       </div>
                     </ScrollArea>
@@ -441,7 +414,7 @@ export default function AdminPage() {
               </div>
               <div className="flex gap-2">
                 <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                <Button onClick={handleAddCategory} disabled={isAddingCategory} className="h-14 w-14 rounded-2xl bg-black"><Plus className="w-6 h-6 text-white" /></Button>
+                <Button onClick={handleAddCategory} className="h-14 w-14 rounded-2xl bg-black"><Plus className="w-6 h-6 text-white" /></Button>
               </div>
             </Card>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -465,7 +438,7 @@ export default function AdminPage() {
                 <input type="file" ref={bannerFileRef} onChange={handleBannerImagePick} className="hidden" accept="image/*" />
               </div>
               <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Button onClick={handleAddBanner} disabled={isAddingBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic italic">Upload Banner</Button>
+              <Button onClick={handleAddBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic italic">Upload Banner</Button>
             </Card>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {banners?.map((b: any) => (
@@ -493,7 +466,7 @@ export default function AdminPage() {
                   <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleAddCoupon} disabled={isAddingCoupon} className="h-14 rounded-2xl bg-black w-full font-bold">ADD COUPON</Button>
+              <Button onClick={handleAddCoupon} className="h-14 rounded-2xl bg-black w-full font-bold">ADD COUPON</Button>
             </Card>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {coupons?.map((c: any) => (
