@@ -23,13 +23,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased bg-background">
+      <body className="font-body antialiased bg-[#F8F9FA]">
         <FirebaseClientProvider>
           <CartProvider>
             <NotificationHandler />
-            <main className="min-h-screen flex flex-col max-w-md mx-auto relative shadow-2xl bg-white overflow-x-hidden pb-20">
+            <div className="min-h-screen flex flex-col max-w-7xl mx-auto relative bg-white shadow-sm md:shadow-2xl overflow-x-hidden pb-20 md:pb-0 md:my-4 md:rounded-[3rem]">
               {children}
-            </main>
+            </div>
             <Toaster />
           </CartProvider>
         </FirebaseClientProvider>
