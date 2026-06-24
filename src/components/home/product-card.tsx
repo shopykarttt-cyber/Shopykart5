@@ -39,14 +39,13 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
     });
   };
 
-  // Calculate discount percentage if not provided but mrp is
   const displayDiscount = discount || (mrp && mrp > price ? `${Math.round(((mrp - price) / mrp) * 100)}%` : null);
-  const displayMrp = mrp || (price * 1.2); // Fallback for demo if no mrp provided
+  const displayMrp = mrp || (price * 1.2);
 
   return (
-    <Card className="border border-gray-100 bg-white rounded-3xl overflow-hidden group transition-all duration-300 shadow-sm hover:shadow-md">
+    <Card className="border border-gray-100 bg-white rounded-3xl overflow-hidden group transition-all duration-300 shadow-sm hover:shadow-md h-full flex flex-col">
       {/* Image Section */}
-      <div className="relative aspect-[1/1.1] w-full bg-[#F9F9F9] p-4">
+      <div className="relative aspect-square w-full bg-[#F9F9F9] p-4 shrink-0">
         {/* Favorite Icon */}
         <button className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-white/80 backdrop-blur-sm text-gray-300 hover:text-red-500 transition-colors">
           <Heart className="w-4 h-4" />
@@ -69,68 +68,63 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
           />
         </div>
 
-        {/* Add Button - Overlapping the image bottom */}
-        <div className="absolute -bottom-2 right-4 z-20">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 flex flex-col items-center">
-            <Button 
-              onClick={handleAddToCart}
-              className="bg-white hover:bg-gray-50 text-[#0C831F] border border-gray-200 h-9 px-6 rounded-xl font-black text-sm uppercase shadow-sm flex items-center gap-1 group/btn"
-            >
-              ADD
-            </Button>
-          </div>
+        {/* Add Button - Scaled down for better proportion */}
+        <div className="absolute -bottom-1.5 right-3 z-20">
+          <Button 
+            onClick={handleAddToCart}
+            className="bg-white hover:bg-gray-50 text-[#0C831F] border border-gray-200 h-8 px-4 rounded-xl font-black text-[10px] uppercase shadow-md flex items-center gap-1"
+          >
+            ADD
+          </Button>
         </div>
 
         {/* Unit Indicator */}
         <div className="absolute bottom-3 left-4 bg-gray-100/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
-          <span className="text-[10px] font-bold text-gray-600">{unit}</span>
+          <span className="text-[9px] font-bold text-gray-600">{unit}</span>
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="p-4 pt-5 space-y-1">
+      <div className="p-4 pt-5 space-y-1 flex-1 flex flex-col">
         {/* Pricing */}
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black text-gray-900">₹{price}</span>
-          <span className="text-xs text-gray-400 line-through">₹{Math.round(displayMrp)}</span>
+          <span className="text-base font-black text-gray-900">₹{price}</span>
+          <span className="text-[10px] text-gray-400 line-through">₹{Math.round(displayMrp)}</span>
         </div>
         
         {displayDiscount && (
-          <p className="text-[11px] font-black text-blue-600 uppercase tracking-tight">
-            {displayDiscount} OFF on MRP
+          <p className="text-[10px] font-black text-blue-600 uppercase tracking-tight">
+            {displayDiscount} OFF
           </p>
         )}
 
         {/* Name */}
-        <h3 className="font-bold text-sm text-gray-800 line-clamp-2 leading-tight min-h-[40px] mt-1">
+        <h3 className="font-bold text-xs text-gray-800 line-clamp-2 leading-tight min-h-[32px] mt-1">
           {name}
         </h3>
 
         {/* Stars & Ratings */}
-        <div className="flex items-center gap-1 mt-1">
+        <div className="flex items-center gap-1 mt-auto pt-2">
           <div className="flex">
             {[1, 2, 3, 4, 5].map((s) => (
-              <Star key={s} className={cn("w-3 h-3", s <= 4 ? "fill-yellow-400 text-yellow-400" : "text-gray-200")} />
+              <Star key={s} className={cn("w-2.5 h-2.5", s <= 4 ? "fill-yellow-400 text-yellow-400" : "text-gray-200")} />
             ))}
           </div>
-          <span className="text-[10px] text-gray-400 font-bold">3.5 lac</span>
+          <span className="text-[9px] text-gray-400 font-bold">3.5 lac</span>
         </div>
 
         {/* Delivery Time */}
-        <div className="flex items-center gap-1 pt-1">
-          <div className="bg-gray-100 p-0.5 rounded-full">
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center gap-1">
             <Clock className="w-2.5 h-2.5 text-gray-500" />
+            <span className="text-[10px] text-gray-500 font-bold italic">9 mins</span>
           </div>
-          <span className="text-[11px] text-gray-500 font-bold italic">9 mins</span>
+          <button className="bg-green-50/50 hover:bg-green-50 text-[#0C831F] px-2 py-1 rounded-md flex items-center gap-0.5 transition-colors">
+            <span className="text-[9px] font-black uppercase">ALL {category?.slice(0, 5) || 'PROD'}</span>
+            <ChevronRight className="w-2.5 h-2.5" />
+          </button>
         </div>
-
-        {/* Category Button */}
-        <button className="mt-3 w-fit bg-green-50/50 hover:bg-green-50 text-[#0C831F] px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors">
-          <span className="text-[10px] font-black uppercase">All {category || 'Products'}</span>
-          <ChevronRight className="w-3 h-3" />
-        </button>
       </div>
     </Card>
   );
 }
-

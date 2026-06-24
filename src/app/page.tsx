@@ -27,9 +27,21 @@ export default function Home() {
 
   const filteredProducts = useMemo(() => {
     if (!liveProducts) return [];
-    if (selectedCategory === "For you") return liveProducts;
-    return liveProducts.filter((p: any) => p.category === selectedCategory);
-  }, [liveProducts, selectedCategory]);
+    
+    // Filter out products that are already in Top Rated section to avoid duplication
+    const topRatedIds = new Set(topRatedProducts.map((p: any) => p.id));
+    
+    let products = liveProducts;
+    
+    if (selectedCategory !== "For you") {
+      products = liveProducts.filter((p: any) => p.category === selectedCategory);
+    } else {
+      // In "For you", we only show products that are NOT in the Top Rated horizontal scroller
+      products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
+    }
+    
+    return products;
+  }, [liveProducts, selectedCategory, topRatedProducts]);
 
   return (
     <AuthGuard>
@@ -46,7 +58,7 @@ export default function Home() {
         </div>
         
         {/* Top Rated Section */}
-        {topRatedProducts.length > 0 && (
+        {topRatedProducts.length > 0 && selectedCategory === "For you" && (
           <div className="px-6 mb-10 mt-6">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
@@ -79,6 +91,11 @@ export default function Home() {
 
         {/* Product Grid Section */}
         <div className="px-6 pb-20 pt-4">
+          {selectedCategory !== "For you" && (
+            <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
+              {selectedCategory}
+            </h2>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
@@ -108,4 +125,3 @@ export default function Home() {
     </AuthGuard>
   );
 }
-
