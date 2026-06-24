@@ -59,13 +59,14 @@ export default function Home() {
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex gap-4 pb-6">
                 {topRatedProducts.map((product: any) => (
-                  <div key={product.id} className="w-[200px] shrink-0">
+                  <div key={product.id} className="w-[180px] shrink-0">
                     <ProductCard 
                       id={product.id}
                       name={product.name}
                       price={product.price}
+                      mrp={product.mrp}
                       unit={product.unit}
-                      discount={product.mrp > product.price ? `${Math.round(((product.mrp - product.price) / product.mrp) * 100)}%` : undefined}
+                      category={product.category}
                       imageId={product.imageUrl}
                     />
                   </div>
@@ -78,7 +79,7 @@ export default function Home() {
 
         {/* Product Grid Section */}
         <div className="px-6 pb-20 pt-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
                 <ProductCard 
@@ -86,8 +87,9 @@ export default function Home() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
+                  mrp={product.mrp}
                   unit={product.unit}
-                  discount={product.mrp > product.price ? `${Math.round(((product.mrp - product.price) / product.mrp) * 100)}%` : undefined}
+                  category={product.category}
                   imageId={product.imageUrl}
                 />
               ))
@@ -106,3 +108,4 @@ export default function Home() {
     </AuthGuard>
   );
 }
+
