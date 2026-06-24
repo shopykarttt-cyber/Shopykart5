@@ -13,6 +13,7 @@
         "category": { "type": "string" },
         "description": { "type": "string" },
         "imageUrl": { "type": "string" },
+        "isTopRated": { "type": "boolean", "default": false },
         "mfgDate": { "type": "string", "format": "date" },
         "expiryDate": { "type": "string", "format": "date" },
         "stock": { "type": "number" },

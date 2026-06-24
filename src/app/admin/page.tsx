@@ -16,16 +16,15 @@ import {
   Ticket,
   Flag,
   FileUp,
-  AlertCircle,
   ShoppingBag,
-  CheckCircle2
+  Star
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
   Sheet,
@@ -51,6 +50,8 @@ import {
 } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -73,7 +74,6 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/");
@@ -111,7 +111,8 @@ export default function AdminPage() {
     unit: "",
     category: "",
     description: "",
-    imageData: "" 
+    imageData: "",
+    isTopRated: false
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -172,14 +173,7 @@ export default function AdminPage() {
     reader.onload = async (event) => {
       const text = event.target?.result as string;
       const rows = text.split('\n').map(row => row.split(','));
-      
       const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
-
-      if (dataRows.length === 0) {
-        toast({ variant: "destructive", title: "Empty File", description: "No valid product rows found." });
-        setIsImportingCsv(false);
-        return;
-      }
 
       let successCount = 0;
       let errorCount = 0;
@@ -197,20 +191,10 @@ export default function AdminPage() {
           continue;
         }
 
-        const categoryExists = categories?.some((cat: any) => cat.name.toLowerCase() === category.toLowerCase());
-        if (!categoryExists) {
-          errorCount++;
-          continue;
-        }
-
         try {
           await addDoc(collection(db, "products"), {
-            name,
-            mrp,
-            price,
-            unit,
-            category,
-            description,
+            name, mrp, price, unit, category, description,
+            isTopRated: false,
             imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
             createdAt: serverTimestamp()
           });
@@ -220,19 +204,15 @@ export default function AdminPage() {
         }
       }
 
-      toast({ 
-        title: "Import Complete", 
-        description: `Successfully added ${successCount} products. ${errorCount} failed.` 
-      });
+      toast({ title: "Import Complete", description: `Added ${successCount} products. ${errorCount} failed.` });
       setIsImportingCsv(false);
-      if (csvFileRef.current) csvFileRef.current.value = "";
     };
     reader.readAsText(file);
   };
 
   const handleAddProduct = () => {
     if (!productForm.name || !productForm.mrp || !productForm.price || !productForm.category) {
-      toast({ variant: "destructive", title: "Missing Fields", description: "Name, MRP, Price, and Category are required." });
+      toast({ variant: "destructive", title: "Missing Fields" });
       return;
     }
     
@@ -248,24 +228,16 @@ export default function AdminPage() {
     addDoc(collection(db, "products"), data)
       .then(() => {
         toast({ title: "Product Live!" });
-        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "" });
+        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
         setIsAddingProduct(false);
       })
       .catch(() => setIsAddingProduct(false));
   };
 
   const handleAddCategory = () => {
-    if (!categoryForm.name || !categoryForm.imageData) {
-      toast({ variant: "destructive", title: "Missing Fields", description: "Name and Icon image are required." });
-      return;
-    }
+    if (!categoryForm.name || !categoryForm.imageData) return;
     setIsAddingCategory(true);
-    const data = {
-      name: categoryForm.name,
-      imageUrl: categoryForm.imageData,
-      createdAt: serverTimestamp()
-    };
-    addDoc(collection(db, "categories"), data)
+    addDoc(collection(db, "categories"), { ...categoryForm, createdAt: serverTimestamp() })
       .then(() => {
         toast({ title: "Category Created" });
         setCategoryForm({ name: "", imageData: "" });
@@ -275,17 +247,9 @@ export default function AdminPage() {
   };
 
   const handleAddBanner = () => {
-    if (!bannerForm.imageData) {
-      toast({ variant: "destructive", title: "Missing Image", description: "Please select a banner image." });
-      return;
-    }
+    if (!bannerForm.imageData) return;
     setIsAddingBanner(true);
-    const data = {
-      title: bannerForm.title || "Promotional Offer",
-      imageUrl: bannerForm.imageData,
-      createdAt: serverTimestamp()
-    };
-    addDoc(collection(db, "banners"), data)
+    addDoc(collection(db, "banners"), { ...bannerForm, createdAt: serverTimestamp() })
       .then(() => {
         toast({ title: "Banner Uploaded" });
         setBannerForm({ title: "", imageData: "" });
@@ -295,24 +259,18 @@ export default function AdminPage() {
   };
 
   const handleAddCoupon = () => {
-    if (!couponForm.code || !couponForm.value) {
-      toast({ variant: "destructive", title: "Missing Fields", description: "Code and Value are required." });
-      return;
-    }
+    if (!couponForm.code || !couponForm.value) return;
     setIsAddingCoupon(true);
-    const data = {
+    addDoc(collection(db, "coupons"), {
       code: couponForm.code.toUpperCase(),
       value: Number(couponForm.value),
       discountType: couponForm.type,
       createdAt: serverTimestamp()
-    };
-    addDoc(collection(db, "coupons"), data)
-      .then(() => {
-        toast({ title: "Coupon Added!" });
-        setCouponForm({ code: "", value: "", type: "fixed" });
-        setIsAddingCoupon(false);
-      })
-      .catch(() => setIsAddingCoupon(false));
+    }).then(() => {
+      toast({ title: "Coupon Added!" });
+      setCouponForm({ code: "", value: "", type: "fixed" });
+      setIsAddingCoupon(false);
+    }).catch(() => setIsAddingCoupon(false));
   };
 
   const menuItems = [
@@ -322,14 +280,13 @@ export default function AdminPage() {
     { id: "categories", label: "Category", icon: Grid },
     { id: "banners", label: "Banners", icon: Flag },
     { id: "coupons", label: "Coupons", icon: Ticket },
-    { id: "customers", label: "Customer List", icon: Users },
+    { id: "customers", label: "Customers", icon: Users },
   ];
 
-  if (authLoading) return null;
-  if (!user) return null;
+  if (authLoading || !user) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
+    <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
       <header className="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 rounded-b-3xl">
         <div className="flex items-center gap-3">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -350,7 +307,7 @@ export default function AdminPage() {
                     <button
                       key={item.id}
                       onClick={() => { setView(item.id); setSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:bg-gray-50'}`}
+                      className={`w-full flex items-center gap-4 px-4 py-4 rounded-2xl transition-all ${view === item.id ? 'bg-primary text-white shadow-lg' : 'text-gray-500 hover:bg-gray-50'}`}
                     >
                       <item.icon className="w-5 h-5" />
                       <span className="font-bold">{item.label}</span>
@@ -367,58 +324,40 @@ export default function AdminPage() {
           </Sheet>
           <div className="flex flex-col">
             <span className="text-lg font-black italic tracking-tighter uppercase leading-none">ADMIN <span className="text-primary">HUB</span></span>
-            <span className="text-[6px] font-black tracking-[0.3em] text-gray-500 uppercase mt-0.5">Control Center</span>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 p-6 space-y-8">
+      <main className="flex-1 p-6 space-y-8 max-w-7xl mx-auto w-full">
         {view === "dashboard" && (
           <div className="space-y-8">
-            <div className="space-y-1">
-              <h2 className="text-4xl font-black italic uppercase">DASHBOARD</h2>
-              <p className="text-xs font-black text-gray-400 uppercase tracking-widest">REAL-TIME INSIGHTS</p>
-            </div>
-
-            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white p-8">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="font-bold text-xl">Weekly Performance</h3>
-                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Sales Trend</p>
-                </div>
-                <Badge className="bg-primary/10 text-primary border-none font-black uppercase tracking-widest px-4">Live</Badge>
-              </div>
-              <div className="h-[250px] w-full">
+            <h2 className="text-3xl font-black italic uppercase">DASHBOARD</h2>
+            <Card className="p-8 rounded-[2.5rem] bg-white shadow-xl">
+               <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={SALES_DATA}>
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#CBD5E1', fontSize: 12, fontWeight: 700}} />
                     <Tooltip cursor={{fill: '#F8F9FA'}} />
                     <Bar dataKey="sales" radius={[12, 12, 12, 12]} barSize={40}>
-                      {SALES_DATA.map((entry, i) => (
-                        <Cell key={`cell-${i}`} fill={i === 5 ? '#ff4d4d' : '#EDF2F7'} className="cursor-pointer hover:opacity-80 transition-opacity" />
-                      ))}
+                      {SALES_DATA.map((entry, i) => <Cell key={`cell-${i}`} fill={i === 5 ? '#ff4d4d' : '#EDF2F7'} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </Card>
-
-            <div className="grid grid-cols-1 gap-4">
-              {[
-                { label: "REVENUE", value: `₹${orders?.reduce((s, o) => s + (o.total || 0), 0) || 0}`, icon: LayoutDashboard, bg: "bg-orange-50", color: "text-orange-500" },
-                { label: "ORDERS", value: orders?.length || 0, icon: ShoppingBag, bg: "bg-blue-50", color: "text-blue-500" },
-                { label: "CUSTOMERS", value: customers?.length || 0, icon: Users, bg: "bg-purple-50", color: "text-purple-500" },
-              ].map((stat, i) => (
-                <Card key={i} className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-                    <h4 className="text-3xl font-black text-gray-900">{stat.value}</h4>
-                  </div>
-                  <div className={`${stat.bg} ${stat.color} w-14 h-14 rounded-3xl flex items-center justify-center`}>
-                    <stat.icon className="w-7 h-7" />
-                  </div>
-                </Card>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">REVENUE</p><h4 className="text-2xl font-black">₹{orders?.reduce((s, o) => s + (o.total || 0), 0) || 0}</h4></div>
+                <div className="bg-orange-50 text-orange-500 p-4 rounded-3xl"><LayoutDashboard className="w-6 h-6" /></div>
+              </Card>
+              <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">ORDERS</p><h4 className="text-2xl font-black">{orders?.length || 0}</h4></div>
+                <div className="bg-blue-50 text-blue-500 p-4 rounded-3xl"><ShoppingBag className="w-6 h-6" /></div>
+              </Card>
+              <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">CUSTOMERS</p><h4 className="text-2xl font-black">{customers?.length || 0}</h4></div>
+                <div className="bg-purple-50 text-purple-500 p-4 rounded-3xl"><Users className="w-6 h-6" /></div>
+              </Card>
             </div>
           </div>
         )}
@@ -429,15 +368,7 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">PRODUCTS</h2>
               <div className="flex gap-2">
                 <input type="file" ref={csvFileRef} onChange={handleCsvUpload} className="hidden" accept=".csv" />
-                <Button 
-                  variant="outline"
-                  onClick={() => csvFileRef.current?.click()}
-                  disabled={isImportingCsv}
-                  className="rounded-2xl border-2 border-dashed border-gray-200 h-12 gap-2 font-bold px-4"
-                >
-                  <FileUp className="w-4 h-4" />
-                  Bulk Import
-                </Button>
+                <Button variant="outline" onClick={() => csvFileRef.current?.click()} disabled={isImportingCsv} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
@@ -445,14 +376,9 @@ export default function AdminPage() {
                   <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0">
                     <ScrollArea className="h-full px-8 py-8">
                       <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
-                      <div className="space-y-6 pb-20">
-                        <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 cursor-pointer overflow-hidden relative group">
-                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
-                            <>
-                              <ImageIcon className="w-10 h-10 text-gray-300 group-hover:text-primary transition-colors" />
-                              <p className="text-xs font-bold text-gray-400">TAP TO OPEN GALLERY</p>
-                            </>
-                          )}
+                      <div className="space-y-6 pb-20 max-w-xl mx-auto">
+                        <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
+                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                           <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
                         </div>
                         <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
@@ -461,14 +387,25 @@ export default function AdminPage() {
                           <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                         </div>
                         <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold">
-                            <SelectValue placeholder="Select Category *" />
-                          </SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
                           <SelectContent className="rounded-2xl border-none shadow-2xl">
                             {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                         <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        
+                        <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                            <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
+                          </div>
+                          <Switch 
+                            id="top-rated-toggle" 
+                            checked={productForm.isTopRated} 
+                            onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} 
+                          />
+                        </div>
+
                         <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct} disabled={isAddingProduct}>
                           {isAddingProduct ? <Loader2 className="animate-spin" /> : "Publish Live"}
                         </Button>
@@ -479,20 +416,15 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products?.map((p: any) => (
-                <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
+                <Card key={p.id} className="p-6 rounded-[2rem] bg-white flex items-center justify-between shadow-lg relative overflow-hidden">
+                  {p.isTopRated && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-1 rounded-bl-xl shadow-md"><Star className="w-3 h-3 fill-current" /></div>}
                   <div className="flex items-center gap-4">
-                    <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" alt={p.name} />
-                    <div>
-                      <h4 className="font-bold text-gray-800">{p.name}</h4>
-                      <p className="text-[10px] font-black text-primary uppercase">{p.category}</p>
-                      <p className="text-sm font-black">₹{p.price}</p>
-                    </div>
+                    <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" />
+                    <div><h4 className="font-bold text-gray-800">{p.name}</h4><p className="text-[10px] font-black text-primary uppercase">{p.category}</p><p className="text-sm font-black">₹{p.price}</p></div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-gray-300 hover:text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}>
-                    <Trash2 className="w-5 h-5" />
-                  </Button>
+                  <Button variant="ghost" size="icon" className="text-gray-200 hover:text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}><Trash2 className="w-5 h-5" /></Button>
                 </Card>
               ))}
             </div>
@@ -502,27 +434,20 @@ export default function AdminPage() {
         {view === "categories" && (
           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
-            <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
-              <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden relative">
-                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
-                  <>
-                    <ImageIcon className="w-8 h-8 text-gray-300" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Upload Icon</p>
-                  </>
-                )}
+            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
+              <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
                 <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
               </div>
               <div className="flex gap-2">
                 <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                <Button onClick={handleAddCategory} disabled={isAddingCategory} className="h-14 w-14 rounded-2xl bg-black">
-                  {isAddingCategory ? <Loader2 className="animate-spin text-white" /> : <Plus className="w-6 h-6 text-white" />}
-                </Button>
+                <Button onClick={handleAddCategory} disabled={isAddingCategory} className="h-14 w-14 rounded-2xl bg-black"><Plus className="w-6 h-6 text-white" /></Button>
               </div>
             </Card>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {categories?.map((cat: any) => (
-                <Card key={cat.id} className="p-5 rounded-[2.5rem] border-none shadow-lg bg-white flex flex-col items-center relative text-center">
-                  <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" alt={cat.name} />
+                <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg">
+                  <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" />
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-4 right-4 text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                 </Card>
@@ -532,27 +457,20 @@ export default function AdminPage() {
         )}
 
         {view === "banners" && (
-          <div className="space-y-6">
+           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">HOME BANNERS</h2>
-            <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
-              <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-2 cursor-pointer overflow-hidden relative">
-                {bannerForm.imageData ? <img src={bannerForm.imageData} className="w-full h-full object-cover" alt="Preview" /> : (
-                  <>
-                    <ImageIcon className="w-10 h-10 text-gray-300" />
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Select Banner Image</p>
-                  </>
-                )}
+            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
+              <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                {bannerForm.imageData ? <img src={bannerForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                 <input type="file" ref={bannerFileRef} onChange={handleBannerImagePick} className="hidden" accept="image/*" />
               </div>
-              <Input placeholder="Offer Title (e.g. 50% Off)" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Button onClick={handleAddBanner} disabled={isAddingBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic">
-                {isAddingBanner ? <Loader2 className="animate-spin" /> : "Upload Banner"}
-              </Button>
+              <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+              <Button onClick={handleAddBanner} disabled={isAddingBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic italic">Upload Banner</Button>
             </Card>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {banners?.map((b: any) => (
-                <Card key={b.id} className="relative h-32 rounded-[2rem] overflow-hidden group shadow-xl">
-                  <img src={b.imageUrl} className="w-full h-full object-cover" alt={b.title} />
+                <Card key={b.id} className="relative h-40 rounded-[2rem] overflow-hidden group shadow-xl">
+                  <img src={b.imageUrl} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
                     <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
@@ -564,10 +482,10 @@ export default function AdminPage() {
         )}
 
         {view === "coupons" && (
-          <div className="space-y-6">
+           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">COUPONS</h2>
-            <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
-              <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value.toUpperCase()})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
+              <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
               <div className="flex gap-2">
                 <Input type="number" placeholder="Value" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                 <Select value={couponForm.type} onValueChange={val => setCouponForm({...couponForm, type: val})}>
@@ -575,17 +493,12 @@ export default function AdminPage() {
                   <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleAddCoupon} disabled={isAddingCoupon} className="h-14 rounded-2xl bg-black w-full font-bold">
-                {isAddingCoupon ? <Loader2 className="animate-spin" /> : "ADD COUPON"}
-              </Button>
+              <Button onClick={handleAddCoupon} disabled={isAddingCoupon} className="h-14 rounded-2xl bg-black w-full font-bold">ADD COUPON</Button>
             </Card>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {coupons?.map((c: any) => (
-                <Card key={c.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex justify-between items-center border-l-4 border-primary">
-                  <div>
-                    <h4 className="font-black text-lg">{c.code}</h4>
-                    <p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p>
-                  </div>
+                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
+                  <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
                   <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
                 </Card>
               ))}
@@ -596,28 +509,19 @@ export default function AdminPage() {
         {view === "orders" && (
           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">LIVE ORDERS</h2>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {orders?.map((order: any) => (
-                <Card key={order.id} className="p-6 rounded-[2.5rem] border-none shadow-lg bg-white space-y-4">
+                <Card key={order.id} className="p-6 rounded-[2.5rem] bg-white shadow-lg space-y-4">
                   <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4>
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'Recent'}</p>
-                    </div>
+                    <div><h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'Recent'}</p></div>
                     <Badge className="bg-orange-100 text-orange-600 border-none font-black uppercase tracking-widest">{order.status}</Badge>
                   </div>
                   <div className="space-y-2">
                     {order.items?.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-500">{item.name} x {item.quantity}</span>
-                        <span className="font-bold">₹{item.price * item.quantity}</span>
-                      </div>
+                      <div key={i} className="flex justify-between text-sm"><span className="text-gray-500">{item.name} x {item.quantity}</span><span className="font-bold">₹{item.price * item.quantity}</span></div>
                     ))}
                   </div>
-                  <div className="pt-4 border-t flex justify-between items-center">
-                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</div>
-                    <div className="text-xl font-black italic">₹{order.total}</div>
-                  </div>
+                  <div className="pt-4 border-t flex justify-between items-center"><div className="text-[10px] font-black text-gray-400 uppercase">Total Amount</div><div className="text-xl font-black italic">₹{order.total}</div></div>
                 </Card>
               ))}
             </div>
@@ -627,18 +531,15 @@ export default function AdminPage() {
         {view === "customers" && (
           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">REGISTERED USERS</h2>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {customers?.map((customer: any) => (
-                <Card key={customer.id} className="p-6 rounded-[2.5rem] border-none shadow-lg bg-white flex items-center justify-between">
+                <Card key={customer.id} className="p-6 rounded-[2.5rem] bg-white flex items-center justify-between shadow-lg">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Users className="w-6 h-6 text-primary" /></div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">{customer.name}</h4>
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{customer.email}</p>
-                    </div>
+                    <div><h4 className="font-bold text-gray-900">{customer.name}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{customer.email}</p></div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Joined</p>
+                    <p className="text-[10px] font-black text-gray-300 uppercase">Joined</p>
                     <p className="text-xs font-bold text-gray-500">{customer.joinedAt ? new Date(customer.joinedAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </Card>
