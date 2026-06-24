@@ -44,7 +44,7 @@ export function BannerSlider() {
   if (featuredItems.length === 0) return null;
 
   return (
-    <div className="bg-[#FFD54F] px-4 pb-6">
+    <div className="px-4 pb-8">
       <Carousel
         opts={{
           align: "start",

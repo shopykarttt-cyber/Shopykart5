@@ -48,38 +48,38 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Gradient - Redesigned to flow better */}
-        <div className="bg-gradient-to-b from-[#FF6B00] via-[#FFD54F] to-white">
+        {/* Top Section with Gradient and Curve */}
+        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[4rem] shadow-sm pb-10">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
           <BannerSlider />
-          
-          {/* Feature Bar - Compact & Premium */}
-          <div className="px-5 py-3">
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 flex justify-between items-center shadow-sm border border-white/50">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
-                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure Payment</span>
-              </div>
-              <div className="w-px h-3 bg-gray-200" />
-              <div className="flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast Delivery</span>
-              </div>
-              <div className="w-px h-3 bg-gray-200" />
-              <div className="flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fresh Quality</span>
-              </div>
+        </div>
+
+        {/* Feature Bar - Floating over the curve */}
+        <div className="px-5 -mt-8 relative z-10">
+          <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-50">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-green-600" />
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure Payment</span>
+            </div>
+            <div className="w-px h-4 bg-gray-100" />
+            <div className="flex items-center gap-1.5">
+              <Zap className="w-4 h-4 text-orange-500" />
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast Delivery</span>
+            </div>
+            <div className="w-px h-4 bg-gray-100" />
+            <div className="flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-blue-500" />
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fresh Quality</span>
             </div>
           </div>
         </div>
 
         {/* Smart Basket AI Section - Always visible above listings */}
         {selectedCategory === "For you" && (
-          <div className="mt-2">
+          <div className="mt-4">
             <SmartBasketAssistant />
           </div>
         )}

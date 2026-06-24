@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo } from "react";
@@ -18,7 +19,7 @@ export function CategoryScroller({ selectedCategory, onSelectCategory }: Categor
   const { data: categories, loading } = useCollection(catQuery);
 
   return (
-    <div className="bg-[#FFD54F] pt-4 pb-1">
+    <div className="pt-4 pb-1">
       <div className="flex overflow-x-auto gap-4 px-6 hide-scrollbar pb-2">
         {/* For You Category */}
         <button 
