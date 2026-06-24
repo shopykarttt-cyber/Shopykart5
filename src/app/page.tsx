@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -11,7 +10,29 @@ import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { Package } from "lucide-react";
+import { Package, Star, RotateCcw, Truck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+export function FeatureBar() {
+  return (
+    <div className="bg-[#FF6B00] mx-4 rounded-xl py-3 px-4 flex justify-between items-center text-white shadow-lg -mt-3 mb-6 relative z-10">
+      <div className="flex items-center gap-2">
+        <Star className="w-4 h-4 text-white" />
+        <span className="text-[10px] font-bold leading-none">Top Rated<br/>Products</span>
+      </div>
+      <div className="h-6 w-[1px] bg-white/20" />
+      <div className="flex items-center gap-2">
+        <RotateCcw className="w-4 h-4 text-white" />
+        <span className="text-[10px] font-bold leading-none">7 Days<br/>Easy Returns</span>
+      </div>
+      <div className="h-6 w-[1px] bg-white/20" />
+      <div className="flex items-center gap-2">
+        <Truck className="w-4 h-4 text-white" />
+        <span className="text-[10px] font-bold leading-none">Cash<br/>on Delivery</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const db = useFirestore();
@@ -29,23 +50,36 @@ export default function Home() {
   return (
     <AuthGuard>
       <TopBar />
-      <div className="flex-1 space-y-4 max-w-7xl mx-auto w-full">
-        <CategoryScroller 
-          selectedCategory={selectedCategory} 
-          onSelectCategory={setSelectedCategory} 
-        />
-        <BannerSlider />
-        <SmartBasketAssistant />
+      <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col">
+        {/* Screenshot Style Background Coverage */}
+        <div className="bg-gradient-to-b from-[#FF6B00] via-[#FFD54F] to-[#FFD54F]">
+          <CategoryScroller 
+            selectedCategory={selectedCategory} 
+            onSelectCategory={setSelectedCategory} 
+          />
+          <BannerSlider />
+        </div>
         
+        <FeatureBar />
+
+        {/* Filter Tags */}
+        <div className="px-6 flex gap-2 overflow-x-auto hide-scrollbar mb-6">
+          <button className="bg-[#4B2C1A] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2">
+            <Heart className="w-3 h-3 fill-current" /> All
+          </button>
+          <button className="bg-white border text-gray-600 px-4 py-2 rounded-xl text-xs font-bold">Waterproof raincoat</button>
+          <button className="bg-white border text-gray-600 px-4 py-2 rounded-xl text-xs font-bold">Glossy sticker</button>
+        </div>
+
         <div className="px-6 pb-12 space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-black italic uppercase tracking-tight">
+            <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight italic">
               {selectedCategory === "For you" ? "Popular Products" : selectedCategory}
             </h2>
-            <button className="text-primary text-sm font-bold hover:underline uppercase tracking-widest">View All</button>
+            <button className="text-primary text-xs font-bold hover:underline">View All</button>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-4 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
                 <ProductCard 
@@ -63,8 +97,7 @@ export default function Home() {
                  <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
                    <Package className="w-8 h-8 text-gray-300" />
                  </div>
-                 <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No products found</p>
-                 <p className="text-[10px] text-gray-400">Try a different category or check back later.</p>
+                 <p className="text-xs font-bold text-gray-300 uppercase tracking-widest">No products found</p>
               </div>
             )}
           </div>
@@ -74,3 +107,5 @@ export default function Home() {
     </AuthGuard>
   );
 }
+
+import { Heart } from "lucide-react";

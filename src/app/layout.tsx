@@ -28,7 +28,7 @@ export default function RootLayout({
           <CartProvider>
             <SplashScreen />
             <NotificationHandler />
-            <div className="min-h-screen flex flex-col max-w-7xl mx-auto relative bg-gradient-to-b from-[#FFD54F] via-[#FFF9C4] to-white shadow-sm md:shadow-2xl overflow-x-hidden pb-20 md:pb-0 md:my-4 md:rounded-[3rem]">
+            <div className="min-h-screen flex flex-col max-w-7xl mx-auto relative bg-[#F8F9FA] shadow-sm md:shadow-2xl overflow-x-hidden pb-20 md:pb-0 md:my-4 md:rounded-[3rem]">
               {children}
             </div>
             <Toaster />
