@@ -10,8 +10,9 @@ import { ProductCard } from "@/components/home/product-card";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { Package, Star } from "lucide-react";
+import { Package, Star, ShieldCheck, Zap, Award } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
 
 export default function Home() {
   const db = useFirestore();
@@ -28,7 +29,6 @@ export default function Home() {
   const filteredProducts = useMemo(() => {
     if (!liveProducts) return [];
     
-    // Filter out products that are already in Top Rated section to avoid duplication
     const topRatedIds = new Set(topRatedProducts.map((p: any) => p.id));
     
     let products = liveProducts;
@@ -36,7 +36,6 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       products = liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // In "For you", we only show products that are NOT in the Top Rated horizontal scroller
       products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
     }
     
@@ -47,22 +46,48 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Main Header-to-Banner Smooth Gradient Flow */}
+        {/* Top Section with Gradient */}
         <div className="bg-gradient-to-b from-[#FF6B00] via-[#FFD54F] to-white">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
           <BannerSlider />
-          <div className="h-4" /> {/* Spacer for transition */}
+          
+          {/* Feature Bar - Secure Payment etc. */}
+          <div className="px-5 py-3">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 flex justify-between items-center shadow-sm border border-white/50">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure Payment</span>
+              </div>
+              <div className="w-px h-3 bg-gray-200" />
+              <div className="flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast Delivery</span>
+              </div>
+              <div className="w-px h-3 bg-gray-200" />
+              <div className="flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fresh Quality</span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Smart Basket AI Section */}
+        {selectedCategory === "For you" && (
+          <div className="mt-2">
+            <SmartBasketAssistant />
+          </div>
+        )}
         
-        {/* Top Rated Section */}
+        {/* Premium Choice (Top Rated) Section */}
         {topRatedProducts.length > 0 && selectedCategory === "For you" && (
           <div className="px-6 mb-10 mt-6">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
-                <div className="bg-yellow-400 p-1.5 rounded-lg">
+                <div className="bg-yellow-400 p-1.5 rounded-lg shadow-sm">
                   <Star className="w-4 h-4 text-white fill-current" />
                 </div>
                 Premium Choice
