@@ -1,16 +1,49 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Zap, ShoppingCart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CartSheet } from "@/components/cart/cart-sheet";
 import { useCart } from "@/components/cart/cart-provider";
 
+const SUGGESTIONS = ["masala", "shampoo", "haldi", "atta", "milk", "bread"];
+
 export function TopBar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
+  
+  // Typewriter effect states
+  const [placeholder, setPlaceholder] = useState("");
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentWord = SUGGESTIONS[suggestionIndex];
+    const fullText = `Search "${currentWord}"...`;
+    const speed = isDeleting ? 40 : 80;
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting && charIndex < fullText.length) {
+        setPlaceholder(fullText.substring(0, charIndex + 1));
+        setCharIndex(prev => prev + 1);
+      } else if (isDeleting && charIndex > 0) {
+        setPlaceholder(fullText.substring(0, charIndex - 1));
+        setCharIndex(prev => prev - 1);
+      } else if (!isDeleting && charIndex === fullText.length) {
+        // Wait before starting to delete
+        setTimeout(() => setIsDeleting(true), 1500);
+      } else if (isDeleting && charIndex === 0) {
+        setIsDeleting(false);
+        setSuggestionIndex((prev) => (prev + 1) % SUGGESTIONS.length);
+      }
+    }, speed);
+
+    return () => clearTimeout(timeout);
+  }, [charIndex, isDeleting, suggestionIndex]);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -29,7 +62,7 @@ export function TopBar() {
         <div className="relative flex-1 group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
           <Input 
-            placeholder="Search groceries..." 
+            placeholder={placeholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={handleSearchKeyDown}

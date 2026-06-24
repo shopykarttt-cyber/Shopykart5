@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState } from "react";
@@ -9,7 +10,7 @@ import { ProductCard } from "@/components/home/product-card";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { Package, Star, RotateCcw, Truck } from "lucide-react";
+import { Package, Star, ShieldCheck, Truck } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export function FeatureBar() {
@@ -21,8 +22,8 @@ export function FeatureBar() {
       </div>
       <div className="h-6 w-[1px] bg-white/20" />
       <div className="flex items-center gap-2.5">
-        <RotateCcw className="w-4 h-4 text-white" />
-        <span className="text-[10px] font-black leading-none uppercase tracking-tighter">7 Days<br/>Returns</span>
+        <ShieldCheck className="w-4 h-4 text-white" />
+        <span className="text-[10px] font-black leading-none uppercase tracking-tighter">Secure<br/>Payment</span>
       </div>
       <div className="h-6 w-[1px] bg-white/20" />
       <div className="flex items-center gap-2.5">
