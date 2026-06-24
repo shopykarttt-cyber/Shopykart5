@@ -11,6 +11,8 @@ export function useUser() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // onAuthStateChanged is the source of truth for auth state.
+    // It will always fire at least once with the current user or null.
     const unsubscribe = onAuthStateChanged(
       auth, 
       (user) => {
@@ -23,14 +25,15 @@ export function useUser() {
       }
     );
 
-    // Safety timeout to ensure loading doesn't get stuck forever
-    const timeout = setTimeout(() => {
+    // We removed the short safety timeout to prevent flickering
+    // where 'loading' could become false before Firebase was ready.
+    const safetyTimeout = setTimeout(() => {
       setLoading(false);
-    }, 5000);
+    }, 8000); // Increased to 8s as a final fail-safe only
 
     return () => {
       unsubscribe();
-      clearTimeout(timeout);
+      clearTimeout(safetyTimeout);
     };
   }, [auth]);
 
