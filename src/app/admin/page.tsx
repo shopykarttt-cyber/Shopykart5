@@ -126,11 +126,31 @@ export default function AdminPage() {
     type: "fixed"
   });
 
-  const handleFileToBase64 = (file: File): Promise<string> => {
+  // Image Optimization Function to prevent Firestore size limit errors
+  const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+      };
       reader.onerror = error => reject(error);
     });
   };
@@ -138,24 +158,24 @@ export default function AdminPage() {
   const handleProductImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await handleFileToBase64(file);
-      setProductForm({ ...productForm, imageData: base64 });
+      const optimized = await optimizeImage(file);
+      setProductForm({ ...productForm, imageData: optimized });
     }
   };
 
   const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await handleFileToBase64(file);
-      setCategoryForm({ ...categoryForm, imageData: base64 });
+      const optimized = await optimizeImage(file);
+      setCategoryForm({ ...categoryForm, imageData: optimized });
     }
   };
 
   const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await handleFileToBase64(file);
-      setBannerForm({ ...bannerForm, imageData: base64 });
+      const optimized = await optimizeImage(file);
+      setBannerForm({ ...bannerForm, imageData: optimized });
     }
   };
 
@@ -207,17 +227,26 @@ export default function AdminPage() {
       createdAt: serverTimestamp()
     };
 
+    // Fast publishing: reset and close immediately for better UX
+    setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
+    setIsProductSheetOpen(false);
+
     addDoc(collection(db, "products"), data)
       .then(() => {
         toast({ title: "Product Live!" });
-        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
-        setIsProductSheetOpen(false);
+      })
+      .catch((err) => {
+        toast({ variant: "destructive", title: "Error", description: err.message });
       });
   };
 
   const handleAddCategory = () => {
     if (!categoryForm.name || !categoryForm.imageData) return;
-    addDoc(collection(db, "categories"), { ...categoryForm, createdAt: serverTimestamp() })
+    addDoc(collection(db, "categories"), { 
+      name: categoryForm.name,
+      imageUrl: categoryForm.imageData,
+      createdAt: serverTimestamp() 
+    })
       .then(() => {
         toast({ title: "Category Created" });
         setCategoryForm({ name: "", imageData: "" });
@@ -226,7 +255,11 @@ export default function AdminPage() {
 
   const handleAddBanner = () => {
     if (!bannerForm.imageData) return;
-    addDoc(collection(db, "banners"), { ...bannerForm, createdAt: serverTimestamp() })
+    addDoc(collection(db, "banners"), { 
+      title: bannerForm.title,
+      imageUrl: bannerForm.imageData,
+      createdAt: serverTimestamp() 
+    })
       .then(() => {
         toast({ title: "Banner Uploaded" });
         setBannerForm({ title: "", imageData: "" });
