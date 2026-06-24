@@ -45,7 +45,7 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
   return (
     <Card className="border border-gray-100 bg-white rounded-3xl overflow-hidden group transition-all duration-300 shadow-sm hover:shadow-md h-full flex flex-col">
       {/* Image Section */}
-      <div className="relative aspect-square w-full bg-[#F9F9F9] p-4 shrink-0">
+      <div className="relative aspect-square w-full bg-white shrink-0 overflow-hidden">
         {/* Favorite Icon */}
         <button className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-white/80 backdrop-blur-sm text-gray-300 hover:text-red-500 transition-colors">
           <Heart className="w-4 h-4" />
@@ -64,11 +64,11 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
             src={imageId}
             alt={name}
             fill
-            className="object-contain p-2 mix-blend-multiply group-hover:scale-105 transition-transform duration-500"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         </div>
 
-        {/* Add Button - Scaled down for better proportion */}
+        {/* Add Button */}
         <div className="absolute -bottom-1.5 right-3 z-20">
           <Button 
             onClick={handleAddToCart}
@@ -79,7 +79,7 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, category, dis
         </div>
 
         {/* Unit Indicator */}
-        <div className="absolute bottom-3 left-4 bg-gray-100/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
+        <div className="absolute bottom-3 left-4 bg-white/80 backdrop-blur-sm px-2 py-0.5 rounded-md">
           <span className="text-[9px] font-bold text-gray-600">{unit}</span>
         </div>
       </div>
