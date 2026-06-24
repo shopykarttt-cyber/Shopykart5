@@ -17,14 +17,15 @@ import {
   Flag,
   FileUp,
   AlertCircle,
-  ShoppingBag
+  ShoppingBag,
+  CheckCircle2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
   Sheet,
@@ -72,7 +73,7 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated - Fixed to use useEffect
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/");
@@ -110,8 +111,6 @@ export default function AdminPage() {
     unit: "",
     category: "",
     description: "",
-    mfgDate: "",
-    expiryDate: "",
     imageData: "" 
   });
 
@@ -249,7 +248,7 @@ export default function AdminPage() {
     addDoc(collection(db, "products"), data)
       .then(() => {
         toast({ title: "Product Live!" });
-        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", mfgDate: "", expiryDate: "", imageData: "" });
+        setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "" });
         setIsAddingProduct(false);
       })
       .catch(() => setIsAddingProduct(false));
@@ -327,7 +326,7 @@ export default function AdminPage() {
   ];
 
   if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
-  if (!user) return null; // Let the useEffect handle redirection
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col pb-10">
@@ -339,14 +338,14 @@ export default function AdminPage() {
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] p-0 bg-white border-none shadow-2xl flex flex-col h-full">
-              <SheetHeader className="text-left p-6 mb-4">
+            <SheetContent side="left" className="w-[300px] p-0 bg-white border-none shadow-2xl flex flex-col h-full overflow-hidden">
+              <SheetHeader className="text-left p-6">
                 <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
                   GROSI<span className="text-primary">FY</span> <span className="text-xs text-gray-400">ADMIN</span>
                 </SheetTitle>
               </SheetHeader>
               <ScrollArea className="flex-1 px-6">
-                <div className="space-y-2 pb-10">
+                <div className="space-y-2 pb-20">
                   {menuItems.map((item) => (
                     <button
                       key={item.id}
@@ -480,15 +479,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="bg-blue-50/50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100 mb-2">
-              <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5" />
-              <div className="text-xs text-blue-600 font-medium">
-                <p className="font-bold mb-1 uppercase tracking-tight">CSV Format Guide:</p>
-                <p>name, mrp, price, unit, category, description</p>
-                <p className="mt-1 opacity-70 italic">* Make sure categories match exactly with existing ones.</p>
-              </div>
-            </div>
-
             <div className="grid gap-4">
               {products?.map((p: any) => (
                 <Card key={p.id} className="p-6 rounded-[2rem] border-none shadow-lg bg-white flex items-center justify-between">
@@ -612,7 +602,7 @@ export default function AdminPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4>
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{new Date(order.createdAt?.seconds * 1000).toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'Recent'}</p>
                     </div>
                     <Badge className="bg-orange-100 text-orange-600 border-none font-black uppercase tracking-widest">{order.status}</Badge>
                   </div>
