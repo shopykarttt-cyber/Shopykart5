@@ -5,15 +5,13 @@ import { useState } from "react";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  updateProfile,
-  GoogleAuthProvider,
-  signInWithPopup
+  updateProfile
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ShoppingBasket, Mail, Lock, User, Phone, Chrome, ArrowRight, Loader2 } from "lucide-react";
+import { ShoppingBasket, Mail, Lock, User, Phone, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -58,7 +56,6 @@ export function AuthScreen() {
           uid: user.uid
         };
 
-        // Non-blocking write for production
         setDoc(doc(db, "customers", user.uid), customerData)
           .catch(async () => {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -81,34 +78,10 @@ export function AuthScreen() {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      const customerData = {
-        name: user.displayName || "Google User",
-        email: user.email,
-        phone: user.phoneNumber || "",
-        joinedAt: new Date().toISOString(),
-        totalOrders: 0,
-        totalSpent: 0,
-        uid: user.uid
-      };
-
-      setDoc(doc(db, "customers", user.uid), customerData, { merge: true })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `customers/${user.uid}`,
-            operation: 'write',
-            requestResourceData: customerData
-          }));
-        });
-
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Google Sign In Failed", description: error.message });
-    }
+  const handleForgotPassword = () => {
+    const adminPhone = "7992090977";
+    const message = encodeURIComponent("Hello, I forgot my Grosify password. Please help me reset it. My email is: " + (email || "[Enter Email]"));
+    window.open(`https://wa.me/91${adminPhone}?text=${message}`, "_blank");
   };
 
   return (
@@ -162,16 +135,29 @@ export function AuthScreen() {
               required
             />
           </div>
-          <div className="relative">
-            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <Input 
-              type="password" 
-              placeholder="Password" 
-              className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className="space-y-2">
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input 
+                type="password" 
+                placeholder="Password" 
+                className="h-14 pl-12 rounded-2xl bg-gray-50 border-none focus-visible:ring-primary"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {isLogin && (
+              <div className="flex justify-end px-2">
+                <button 
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="text-xs font-bold text-primary hover:underline transition-all uppercase tracking-widest"
+                >
+                  Forgot Password?
+                </button>
+              </div>
+            )}
           </div>
           {!isLogin && (
             <div className="relative">
@@ -199,21 +185,7 @@ export function AuthScreen() {
           </Button>
         </form>
 
-        <div className="relative py-4">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-400 font-bold tracking-widest">Or continue with</span></div>
-        </div>
-
-        <Button 
-          variant="outline" 
-          onClick={handleGoogleSignIn}
-          className="h-14 rounded-2xl border-gray-100 font-bold flex items-center gap-3 hover:bg-gray-50"
-        >
-          <Chrome className="w-5 h-5" />
-          Google Account
-        </Button>
-
-        <p className="text-center text-sm font-medium text-gray-500 pb-8">
+        <p className="text-center text-sm font-medium text-gray-500 pb-8 mt-4">
           {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
           <button 
             onClick={() => setIsLogin(!isLogin)}
