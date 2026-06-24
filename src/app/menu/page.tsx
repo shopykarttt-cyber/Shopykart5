@@ -42,7 +42,6 @@ export default function MenuPage() {
               <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No categories live</p>
             </div>
           )}
-          {loading && <p className="text-center text-gray-400 py-10 font-bold uppercase tracking-widest animate-pulse">Loading Categories...</p>}
         </div>
       </div>
       <BottomNav />

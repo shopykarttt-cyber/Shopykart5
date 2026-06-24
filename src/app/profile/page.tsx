@@ -12,6 +12,7 @@ import { doc, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 export default function ProfilePage() {
   const auth = useAuth();
@@ -72,7 +73,7 @@ export default function ProfilePage() {
     { icon: Settings, label: "Settings", color: "text-gray-500", bg: "bg-gray-50" },
   ];
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (loading) return null;
 
   return (
     <>

@@ -55,7 +55,6 @@ export default function Home() {
                  <p className="text-[10px] text-gray-400">Add products from Admin Panel</p>
               </div>
             )}
-            {productsLoading && <p className="text-center col-span-full py-10 text-gray-400 font-bold uppercase tracking-widest animate-pulse">Loading Fresh Stock...</p>}
           </div>
         </div>
       </div>

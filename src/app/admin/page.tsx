@@ -73,7 +73,7 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
-  // Redirect if not authenticated - Fixed to use useEffect
+  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/");
@@ -325,7 +325,7 @@ export default function AdminPage() {
     { id: "customers", label: "Customer List", icon: Users },
   ];
 
-  if (authLoading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (authLoading) return null;
   if (!user) return null;
 
   return (
@@ -435,7 +435,7 @@ export default function AdminPage() {
                   disabled={isImportingCsv}
                   className="rounded-2xl border-2 border-dashed border-gray-200 h-12 gap-2 font-bold px-4"
                 >
-                  {isImportingCsv ? <Loader2 className="animate-spin w-4 h-4" /> : <FileUp className="w-4 h-4" />}
+                  <FileUp className="w-4 h-4" />
                   Bulk Import
                 </Button>
                 <Sheet>
