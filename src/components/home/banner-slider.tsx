@@ -1,74 +1,75 @@
+
 "use client";
 
-import Image from "next/image";
 import { useMemo } from "react";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
-import { Button } from "@/components/ui/button";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
 
 export function BannerSlider() {
   const db = useFirestore();
+  
+  // Fetch actual banners from admin
   const bannersQuery = useMemo(() => query(collection(db, "banners"), orderBy("createdAt", "desc")), [db]);
-  const { data: liveBanners, loading } = useCollection(bannersQuery);
+  const { data: liveBanners } = useCollection(bannersQuery);
 
-  const defaultBanners = [
-    { 
-      id: "default-1", 
-      title: "Grocery Match", 
-      imageUrl: "https://picsum.photos/seed/grocerymatch/400/600",
-      badge: "WIN 150",
-      subText: "Play Now"
-    },
-    { 
-      id: "default-2", 
-      title: "Super Loot Deals", 
-      imageUrl: "https://picsum.photos/seed/loot1/400/600",
-      badge: "From ₹179",
-      subText: "Men's Shirts"
-    },
-    { 
-      id: "default-3", 
-      title: "Super Loot Deals", 
-      imageUrl: "https://picsum.photos/seed/loot2/400/600",
-      badge: "From ₹99",
-      subText: "School Needs"
+  // Fetch top rated products to use as "Featured" items if no banners are added
+  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc")), [db]);
+  const { data: liveProducts } = useCollection(productsQuery);
+
+  const featuredItems = useMemo(() => {
+    if (liveBanners && liveBanners.length > 0) return liveBanners;
+    
+    // Fallback: If no banners are added in Admin, show Top Rated products as featured bar items
+    if (liveProducts) {
+      return liveProducts
+        .filter((p: any) => p.isTopRated === true)
+        .map((p: any) => ({
+          id: p.id,
+          title: p.name,
+          imageUrl: p.imageUrl,
+          badge: "FEATURED",
+          subText: `Just ₹${p.price}`
+        }));
     }
-  ];
 
-  const bannersToShow = liveBanners && liveBanners.length > 0 ? liveBanners : defaultBanners;
+    return [];
+  }, [liveBanners, liveProducts]);
+
+  // Only show the slider if we have something to show (removes sample static data)
+  if (featuredItems.length === 0) return null;
 
   return (
     <div className="bg-[#FFD54F] px-4 pb-6">
       <Carousel
         opts={{
           align: "start",
-          loop: false,
+          loop: featuredItems.length > 2,
         }}
         className="w-full"
       >
         <CarouselContent className="-ml-3">
-          {bannersToShow.map((banner: any, index: number) => (
-            <CarouselItem key={banner.id || index} className="pl-3 basis-[42%]">
+          {featuredItems.map((item: any, index: number) => (
+            <CarouselItem key={item.id || index} className="pl-3 basis-[42%]">
               <div className="relative aspect-[3/4.5] w-full rounded-2xl overflow-hidden shadow-md group border-2 border-white/20">
                 <img
-                  src={banner.imageUrl}
-                  alt={banner.title}
+                  src={item.imageUrl}
+                  alt={item.title}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 p-3 flex flex-col justify-between">
                   <div>
                     <span className="text-white text-[10px] font-black uppercase tracking-tight flex items-center gap-1">
-                      {banner.badge || "Offer"}
+                      {item.badge || "Offer"}
                     </span>
-                    <p className="text-white/80 text-[8px] font-bold">{banner.subText}</p>
+                    <p className="text-white/80 text-[8px] font-bold">{item.subText}</p>
                   </div>
-                  <h3 className="text-white text-xs font-black leading-tight uppercase">
-                    {banner.title}
+                  <h3 className="text-white text-xs font-black leading-tight uppercase line-clamp-2">
+                    {item.title}
                   </h3>
                 </div>
               </div>

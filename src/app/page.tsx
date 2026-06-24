@@ -23,6 +23,7 @@ export default function Home() {
 
   const topRatedProducts = useMemo(() => {
     if (!liveProducts) return [];
+    // Ensuring we only pick products where isTopRated is strictly true
     return liveProducts.filter((p: any) => p.isTopRated === true);
   }, [liveProducts]);
 
@@ -36,6 +37,7 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       products = liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
+      // For "For you", we show everything EXCEPT those already shown in Premium Choice section to avoid duplication
       products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
     }
     
@@ -46,7 +48,7 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Gradient */}
+        {/* Top Section with Gradient - Redesigned to flow better */}
         <div className="bg-gradient-to-b from-[#FF6B00] via-[#FFD54F] to-white">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
@@ -54,7 +56,7 @@ export default function Home() {
           />
           <BannerSlider />
           
-          {/* Feature Bar - Secure Payment etc. */}
+          {/* Feature Bar - Compact & Premium */}
           <div className="px-5 py-3">
             <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 flex justify-between items-center shadow-sm border border-white/50">
               <div className="flex items-center gap-1.5">
@@ -75,14 +77,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Smart Basket AI Section */}
+        {/* Smart Basket AI Section - Always visible above listings */}
         {selectedCategory === "For you" && (
           <div className="mt-2">
             <SmartBasketAssistant />
           </div>
         )}
         
-        {/* Premium Choice (Top Rated) Section */}
+        {/* Premium Choice (Top Rated) Section - Only your manually selected products */}
         {topRatedProducts.length > 0 && selectedCategory === "For you" && (
           <div className="px-6 mb-10 mt-6">
             <div className="flex justify-between items-center mb-5">
@@ -114,7 +116,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Product Grid Section */}
+        {/* Main Product Grid */}
         <div className="px-6 pb-20 pt-4">
           {selectedCategory !== "For you" && (
             <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
