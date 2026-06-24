@@ -23,7 +23,6 @@ export default function Home() {
 
   const topRatedProducts = useMemo(() => {
     if (!liveProducts) return [];
-    // Ensuring we only pick products where isTopRated is strictly true
     return liveProducts.filter((p: any) => p.isTopRated === true);
   }, [liveProducts]);
 
@@ -37,7 +36,6 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       products = liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // For "For you", we show everything EXCEPT those already shown in Premium Choice section to avoid duplication
       products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
     }
     
@@ -48,8 +46,8 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Gradient and Curve */}
-        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[4rem] shadow-sm pb-10">
+        {/* Top Section with Gradient and Rounded Edges */}
+        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[3rem] shadow-sm pb-10">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
@@ -57,7 +55,7 @@ export default function Home() {
           <BannerSlider />
         </div>
 
-        {/* Feature Bar - Floating over the curve */}
+        {/* Feature Bar - Floating over the rounded edge */}
         <div className="px-5 -mt-8 relative z-10">
           <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-50">
             <div className="flex items-center gap-1.5">
@@ -77,14 +75,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Smart Basket AI Section - Always visible above listings */}
+        {/* Smart Basket AI Section */}
         {selectedCategory === "For you" && (
           <div className="mt-4">
             <SmartBasketAssistant />
           </div>
         )}
         
-        {/* Premium Choice (Top Rated) Section - Only your manually selected products */}
+        {/* Premium Choice (Top Rated) Section */}
         {topRatedProducts.length > 0 && selectedCategory === "For you" && (
           <div className="px-6 mb-10 mt-6">
             <div className="flex justify-between items-center mb-5">
