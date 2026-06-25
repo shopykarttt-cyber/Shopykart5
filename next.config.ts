@@ -29,10 +29,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-  },
-  // Dev indicators are now handled automatically in Next 15
-  devIndicators: {
-    appIsrStatus: false,
   }
 };
 
