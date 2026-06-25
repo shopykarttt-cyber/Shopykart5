@@ -69,11 +69,16 @@ export default function AdminPage() {
   const [view, setView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   
   const productFileRef = useRef<HTMLInputElement>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -126,7 +131,6 @@ export default function AdminPage() {
     type: "fixed"
   });
 
-  // Image Optimization Function to prevent Firestore size limit errors
   const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -202,7 +206,7 @@ export default function AdminPage() {
           addDoc(collection(db, "products"), {
             name, mrp, price, unit, category, description,
             isTopRated: false,
-            imageUrl: `https://picsum.photos/seed/${Math.random()}/400/400`,
+            imageUrl: `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
             createdAt: serverTimestamp()
           });
           successCount++;
@@ -223,11 +227,10 @@ export default function AdminPage() {
       ...productForm,
       mrp: Number(productForm.mrp),
       price: Number(productForm.price),
-      imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.random()}/400/400`,
+      imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
       createdAt: serverTimestamp()
     };
 
-    // Fast publishing: reset and close immediately for better UX
     setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
     setIsProductSheetOpen(false);
 
@@ -289,6 +292,15 @@ export default function AdminPage() {
     { id: "customers", label: "Customers", icon: Users },
   ];
 
+  const formatOrderDate = (timestamp: any) => {
+    if (!timestamp || !isClient) return 'Recent';
+    try {
+      return new Date(timestamp.seconds * 1000).toLocaleString();
+    } catch (e) {
+      return 'Recent';
+    }
+  };
+
   if (authLoading || !user) return null;
 
   return (
@@ -340,15 +352,17 @@ export default function AdminPage() {
             <h2 className="text-3xl font-black italic uppercase">DASHBOARD</h2>
             <Card className="p-8 rounded-[2.5rem] bg-white shadow-xl">
                <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={SALES_DATA}>
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#CBD5E1', fontSize: 12, fontWeight: 700}} />
-                    <Tooltip cursor={{fill: '#F8F9FA'}} />
-                    <Bar dataKey="sales" radius={[12, 12, 12, 12]} barSize={40}>
-                      {SALES_DATA.map((entry, i) => <Cell key={`cell-${i}`} fill={i === 5 ? '#ff4d4d' : '#EDF2F7'} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {isClient && (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={SALES_DATA}>
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill: '#CBD5E1', fontSize: 12, fontWeight: 700}} />
+                      <Tooltip cursor={{fill: '#F8F9FA'}} />
+                      <Bar dataKey="sales" radius={[12, 12, 12, 12]} barSize={40}>
+                        {SALES_DATA.map((entry, i) => <Cell key={`cell-${i}`} fill={i === 5 ? '#ff4d4d' : '#EDF2F7'} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </Card>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -471,7 +485,7 @@ export default function AdminPage() {
                 <input type="file" ref={bannerFileRef} onChange={handleBannerImagePick} className="hidden" accept="image/*" />
               </div>
               <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Button onClick={handleAddBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic italic">Upload Banner</Button>
+              <Button onClick={handleAddBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic">Upload Banner</Button>
             </Card>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {banners?.map((b: any) => (
@@ -519,7 +533,7 @@ export default function AdminPage() {
               {orders?.map((order: any) => (
                 <Card key={order.id} className="p-6 rounded-[2.5rem] bg-white shadow-lg space-y-4">
                   <div className="flex justify-between items-start">
-                    <div><h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'Recent'}</p></div>
+                    <div><h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{formatOrderDate(order.createdAt)}</p></div>
                     <Badge className="bg-orange-100 text-orange-600 border-none font-black uppercase tracking-widest">{order.status}</Badge>
                   </div>
                   <div className="space-y-2">
