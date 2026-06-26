@@ -40,15 +40,13 @@ export default function Home() {
   const filteredProducts = useMemo(() => {
     if (!liveProducts) return [];
     
-    const featuredIds = new Set(featuredProducts.map((p: any) => p.id));
-    
     if (selectedCategory !== "For you") {
       return liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // In "For you", show everything EXCEPT the 7 already shown in the top horizontal section
-      return liveProducts.filter((p: any) => !featuredIds.has(p.id));
+      // Show ALL products in the main grid, including Top Rated ones
+      return liveProducts;
     }
-  }, [liveProducts, selectedCategory, featuredProducts]);
+  }, [liveProducts, selectedCategory]);
 
   return (
     <AuthGuard>
@@ -61,7 +59,7 @@ export default function Home() {
             onSelectCategory={setSelectedCategory} 
           />
           
-          {/* Top Rated Section - NEW UI */}
+          {/* Top Rated Section (Premium Choice) */}
           {featuredProducts.length > 0 && selectedCategory === "For you" && (
             <div className="px-6 mt-4">
               <div className="flex justify-between items-center mb-4">
@@ -144,7 +142,7 @@ export default function Home() {
         {/* Main Product Grid */}
         <div className="px-6 pb-28 pt-6">
           <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
-            {selectedCategory === "For you" ? "Fresh in Store" : selectedCategory}
+            {selectedCategory === "For you" ? "All Products" : selectedCategory}
           </h2>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
