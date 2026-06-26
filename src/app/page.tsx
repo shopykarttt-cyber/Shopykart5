@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState } from "react";
@@ -19,7 +18,7 @@ export default function Home() {
   const db = useFirestore();
   const [selectedCategory, setSelectedCategory] = useState("For you");
 
-  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(100)), [db]);
+  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(500)), [db]);
   const { data: liveProducts } = useCollection(productsQuery);
 
   // Logic to get exactly 7 featured products
@@ -59,7 +58,7 @@ export default function Home() {
             onSelectCategory={setSelectedCategory} 
           />
           
-          {/* Top Rated Section (Premium Choice) */}
+          {/* Top Rated Section (Premium Choice) - Now ABOVE the feature bar */}
           {featuredProducts.length > 0 && selectedCategory === "For you" && (
             <div className="px-6 mt-4">
               <div className="flex justify-between items-center mb-4">
@@ -125,7 +124,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Banner Slider */}
+        {/* Banner Slider - Only visible if banners exist */}
         {selectedCategory === "For you" && (
           <div className="mt-8 mb-4">
             <BannerSlider />
