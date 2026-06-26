@@ -21,28 +21,37 @@ export default function Home() {
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(50)), [db]);
   const { data: liveProducts } = useCollection(productsQuery);
 
-  const topRatedProducts = useMemo(() => {
+  // Logic to get exactly 7 featured products
+  const featuredProducts = useMemo(() => {
     if (!liveProducts) return [];
-    // Limit to exactly 7 products as requested
-    return liveProducts.filter((p: any) => p.isTopRated === true).slice(0, 7);
+    
+    // First, try to get products marked as Top Rated
+    const topRated = liveProducts.filter((p: any) => p.isTopRated === true);
+    
+    if (topRated.length > 0) {
+      return topRated.slice(0, 7);
+    }
+    
+    // Fallback: If no top rated products, just show the latest 7 products
+    return liveProducts.slice(0, 7);
   }, [liveProducts]);
 
   const filteredProducts = useMemo(() => {
     if (!liveProducts) return [];
     
-    const topRatedIds = new Set(topRatedProducts.map((p: any) => p.id));
+    const featuredIds = new Set(featuredProducts.map((p: any) => p.id));
     
     let products = liveProducts;
     
     if (selectedCategory !== "For you") {
       products = liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // In "For you", show everything except those already shown in top 7 horizontal
-      products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
+      // In "For you", show everything except those already shown in featured horizontal section
+      products = liveProducts.filter((p: any) => !featuredIds.has(p.id));
     }
     
     return products;
-  }, [liveProducts, selectedCategory, topRatedProducts]);
+  }, [liveProducts, selectedCategory, featuredProducts]);
 
   return (
     <AuthGuard>
@@ -77,7 +86,7 @@ export default function Home() {
         </div>
 
         {/* Premium Choice (Exactly 7 Products) Section - Shown right after categories in For You */}
-        {topRatedProducts.length > 0 && selectedCategory === "For you" && (
+        {featuredProducts.length > 0 && selectedCategory === "For you" && (
           <div className="px-6 mb-6 mt-8">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
@@ -89,7 +98,7 @@ export default function Home() {
             </div>
             <ScrollArea className="w-full whitespace-nowrap">
               <div className="flex gap-4 pb-6">
-                {topRatedProducts.map((product: any) => (
+                {featuredProducts.map((product: any) => (
                   <div key={product.id} className="w-[180px] shrink-0">
                     <ProductCard 
                       id={product.id}
