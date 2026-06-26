@@ -8,7 +8,6 @@ import {
   DialogHeader, 
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { MapPin, Search, CheckCircle2 } from "lucide-react";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
@@ -22,16 +21,22 @@ export function ZoneSelector() {
   const [search, setSearch] = useState("");
 
   const zonesQuery = useMemo(() => query(collection(db, "zones"), orderBy("name", "asc")), [db]);
-  const { data: zones } = useCollection(zonesQuery);
+  const { data: zones, loading } = useCollection(zonesQuery);
 
   useEffect(() => {
     const saved = localStorage.getItem("grosify_selected_zone");
-    if (!saved) {
-      setOpen(true);
-    } else {
+    
+    // If already saved, just set the state and don't open
+    if (saved) {
       setSelectedZone(saved);
+      return;
     }
-  }, []);
+
+    // Only open if there are actually zones created in Admin and not currently loading
+    if (!loading && zones && zones.length > 0) {
+      setOpen(true);
+    }
+  }, [zones, loading]);
 
   const handleSelect = (zoneName: string) => {
     setSelectedZone(zoneName);
@@ -43,6 +48,9 @@ export function ZoneSelector() {
     z.name.toLowerCase().includes(search.toLowerCase()) || 
     z.pincode.includes(search)
   );
+
+  // If no zones are created in the database, don't render anything
+  if (!loading && (!zones || zones.length === 0)) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
