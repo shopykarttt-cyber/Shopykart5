@@ -91,6 +91,8 @@
       "properties": {
         "name": { "type": "string" },
         "pincode": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "pincode"]

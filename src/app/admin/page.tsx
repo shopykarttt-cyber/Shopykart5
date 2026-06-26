@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { 
   LayoutDashboard, 
   Package, 
@@ -18,8 +19,8 @@ import {
   ShoppingBag,
   Star,
   Edit3,
-  X,
-  MapPin
+  MapPin,
+  Map as MapIcon
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,12 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+// Dynamically import Leaflet components for SSR
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
+
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
   { day: "Mon", sales: 1500 },
@@ -64,6 +71,18 @@ const SALES_DATA = [
   { day: "Fri", sales: 3800 },
   { day: "Sat", sales: 500 },
 ];
+
+function LocationMarker({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
+  const map = (useMapEvents as any)({
+    click(e: any) {
+      setPosition([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+
+  return position === null ? null : (
+    <Marker position={position}></Marker>
+  );
+}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -87,8 +106,20 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
+  const [zonePosition, setZonePosition] = useState<[number, number] | null>([28.6139, 77.2090]); // Default Delhi
+
   useEffect(() => {
     setIsClient(true);
+    // Fix Leaflet icon issue in Next.js
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -383,7 +414,12 @@ export default function AdminPage() {
 
   const handleAddZone = () => {
     if (!zoneForm.name || !zoneForm.pincode) return;
-    const data = { ...zoneForm, updatedAt: serverTimestamp() };
+    const data: any = { 
+      ...zoneForm, 
+      lat: zonePosition?.[0] || null, 
+      lng: zonePosition?.[1] || null, 
+      updatedAt: serverTimestamp() 
+    };
     if (editingZoneId) {
       updateDoc(doc(db, "zones", editingZoneId), data)
         .then(() => { toast({ title: "Zone Updated" }); resetZoneForm(); });
@@ -395,6 +431,7 @@ export default function AdminPage() {
 
   const resetZoneForm = () => {
     setZoneForm({ name: "", pincode: "" });
+    setZonePosition([28.6139, 77.2090]);
     setEditingZoneId(null);
     setIsZoneSheetOpen(false);
   };
@@ -402,6 +439,7 @@ export default function AdminPage() {
   const handleEditZone = (z: any) => {
     setEditingZoneId(z.id);
     setZoneForm({ name: z.name, pincode: z.pincode });
+    if (z.lat && z.lng) setZonePosition([z.lat, z.lng]);
     setIsZoneSheetOpen(true);
   };
 
@@ -429,7 +467,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
-      <header className="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-50 rounded-b-3xl">
+      <header className="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-[1000] rounded-b-3xl">
         <div className="flex items-center gap-3">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetTrigger asChild>
@@ -437,7 +475,7 @@ export default function AdminPage() {
                 <Menu className="w-6 h-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[300px] p-0 bg-white border-none shadow-2xl flex flex-col h-full overflow-hidden">
+            <SheetContent side="left" className="w-[300px] p-0 bg-white border-none shadow-2xl flex flex-col h-full overflow-hidden z-[1001]">
               <SheetHeader className="text-left p-6">
                 <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
                   GROSI<span className="text-primary">FY</span> <span className="text-xs text-gray-400">ADMIN</span>
@@ -517,7 +555,7 @@ export default function AdminPage() {
                   <SheetTrigger asChild>
                     <Button onClick={() => setEditingProductId(null)} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                   </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0">
+                  <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
                     <ScrollArea className="h-full px-8 py-8">
                       <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
                       <div className="space-y-6 pb-20 max-w-xl mx-auto">
@@ -532,7 +570,7 @@ export default function AdminPage() {
                         </div>
                         <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
                           <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-2xl">
+                          <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
                             {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
@@ -586,7 +624,7 @@ export default function AdminPage() {
                 <SheetTrigger asChild>
                   <Button onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: "", imageData: "" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white">
+                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
                   <div className="p-8 max-w-xl mx-auto space-y-6">
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
                     <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
@@ -620,24 +658,54 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">ZONES</h2>
               <Sheet open={isZoneSheetOpen} onOpenChange={setIsZoneSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button onClick={() => { setEditingZoneId(null); setZoneForm({ name: "", pincode: "" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
+                  <Button onClick={() => { resetZoneForm(); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="h-[50vh] rounded-t-[3rem] bg-white">
-                  <div className="p-8 max-w-xl mx-auto space-y-6">
-                    <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingZoneId ? "Edit Zone" : "Add Zone"}</SheetTitle></SheetHeader>
-                    <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                    <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                    <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingZoneId ? "Update Zone" : "Add Zone"}</Button>
-                  </div>
+                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white z-[1001] p-0">
+                  <ScrollArea className="h-full px-8 py-8">
+                    <div className="p-8 max-w-2xl mx-auto space-y-6">
+                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingZoneId ? "Edit Zone" : "Add Zone"}</SheetTitle></SheetHeader>
+                      <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      
+                      <div className="space-y-2">
+                        <Label className="font-black text-[10px] uppercase text-gray-400">Mark delivery center on map</Label>
+                        <div className="h-64 rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
+                          {isClient && (
+                            <MapContainer 
+                              center={zonePosition || [28.6139, 77.2090]} 
+                              zoom={13} 
+                              style={{ height: '100%', width: '100%' }}
+                            >
+                              <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                              />
+                              <LocationMarker position={zonePosition} setPosition={setZonePosition} />
+                            </MapContainer>
+                          )}
+                        </div>
+                        {zonePosition && (
+                          <p className="text-[10px] font-bold text-gray-400">Coordinates: {zonePosition[0].toFixed(4)}, {zonePosition[1].toFixed(4)}</p>
+                        )}
+                      </div>
+
+                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic shadow-xl">
+                        {editingZoneId ? "Update Zone" : "Create Zone"}
+                      </Button>
+                    </div>
+                  </ScrollArea>
                 </SheetContent>
               </Sheet>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {zones?.map((z: any) => (
                 <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
-                  <div>
-                    <h4 className="font-black text-lg">{z.name}</h4>
-                    <p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p>
+                  <div className="flex items-center gap-4">
+                    <div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div>
+                    <div>
+                      <h4 className="font-black text-lg">{z.name}</h4>
+                      <p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" onClick={() => handleEditZone(z)} className="text-primary"><Edit3 className="w-5 h-5" /></Button>
@@ -681,8 +749,8 @@ export default function AdminPage() {
               <Sheet open={isCouponSheetOpen} onOpenChange={setIsCouponSheetOpen}>
                 <SheetTrigger asChild>
                   <Button onClick={() => { setEditingCouponId(null); setCouponForm({ code: "", value: "", type: "fixed" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white">
+                </Trigger>
+                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
                   <div className="p-8 max-w-xl mx-auto space-y-6">
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCouponId ? "Edit Coupon" : "Add Coupon"}</SheetTitle></SheetHeader>
                     <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
