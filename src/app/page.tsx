@@ -23,7 +23,8 @@ export default function Home() {
 
   const topRatedProducts = useMemo(() => {
     if (!liveProducts) return [];
-    return liveProducts.filter((p: any) => p.isTopRated === true);
+    // Limit to exactly 7 products as requested
+    return liveProducts.filter((p: any) => p.isTopRated === true).slice(0, 7);
   }, [liveProducts]);
 
   const filteredProducts = useMemo(() => {
@@ -36,6 +37,7 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       products = liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
+      // In "For you", show everything except those already shown in top 7 horizontal
       products = liveProducts.filter((p: any) => !topRatedIds.has(p.id));
     }
     
@@ -46,45 +48,37 @@ export default function Home() {
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Gradient and Slightly Rounded Edges */}
+        {/* Top Section with Categories */}
         <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[2rem] shadow-sm pb-10">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
-          <BannerSlider />
         </div>
 
         {/* Feature Bar - Floating over the edges */}
         <div className="px-5 -mt-8 relative z-10">
-          <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-50">
+          <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-100">
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-green-600" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure Payment</span>
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure</span>
             </div>
             <div className="w-px h-4 bg-gray-100" />
             <div className="flex items-center gap-1.5">
               <Zap className="w-4 h-4 text-orange-500" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast Delivery</span>
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast</span>
             </div>
             <div className="w-px h-4 bg-gray-100" />
             <div className="flex items-center gap-1.5">
               <Award className="w-4 h-4 text-blue-500" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fresh Quality</span>
+              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Quality</span>
             </div>
           </div>
         </div>
 
-        {/* Smart Basket AI Section */}
-        {selectedCategory === "For you" && (
-          <div className="mt-4">
-            <SmartBasketAssistant />
-          </div>
-        )}
-        
-        {/* Premium Choice (Top Rated) Section */}
+        {/* Premium Choice (Exactly 7 Products) Section - Shown right after categories in For You */}
         {topRatedProducts.length > 0 && selectedCategory === "For you" && (
-          <div className="px-6 mb-10 mt-6">
+          <div className="px-6 mb-6 mt-8">
             <div className="flex justify-between items-center mb-5">
               <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
                 <div className="bg-yellow-400 p-1.5 rounded-lg shadow-sm">
@@ -114,6 +108,20 @@ export default function Home() {
           </div>
         )}
 
+        {/* Banner Slider - Moves below the 7 products, hides if no banners exist */}
+        {selectedCategory === "For you" && (
+          <div className="mb-6">
+            <BannerSlider />
+          </div>
+        )}
+
+        {/* Smart Basket AI Section */}
+        {selectedCategory === "For you" && (
+          <div className="mt-4">
+            <SmartBasketAssistant />
+          </div>
+        )}
+        
         {/* Main Product Grid */}
         <div className="px-6 pb-20 pt-4">
           {selectedCategory !== "For you" && (
