@@ -48,7 +48,9 @@ export function TopBar() {
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const query = searchQuery.toLowerCase().trim();
-      // Dev shortcut removed. Search logic can be expanded here for products.
+      if (query === 'admin/dashboard') {
+        router.push('/admin');
+      }
       console.log("Searching for:", query);
     }
   };
