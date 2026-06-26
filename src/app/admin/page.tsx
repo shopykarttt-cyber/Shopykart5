@@ -16,14 +16,16 @@ import {
   Flag,
   FileUp,
   ShoppingBag,
-  Star
+  Star,
+  Edit3,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import {
   Sheet,
@@ -69,8 +71,14 @@ export default function AdminPage() {
   const [view, setView] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isCouponSheetOpen, setIsCouponSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
+
   const productFileRef = useRef<HTMLInputElement>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
@@ -223,37 +231,89 @@ export default function AdminPage() {
       return;
     }
     
-    const data = {
+    const data: any = {
       ...productForm,
       mrp: Number(productForm.mrp),
       price: Number(productForm.price),
-      imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
-      createdAt: serverTimestamp()
+      imageUrl: productForm.imageData,
+      updatedAt: serverTimestamp()
     };
 
-    setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
-    setIsProductSheetOpen(false);
+    if (editingProductId) {
+      updateDoc(doc(db, "products", editingProductId), data)
+        .then(() => {
+          toast({ title: "Product Updated!" });
+          resetProductForm();
+        });
+    } else {
+      data.imageUrl = productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`;
+      data.createdAt = serverTimestamp();
+      addDoc(collection(db, "products"), data)
+        .then(() => {
+          toast({ title: "Product Live!" });
+          resetProductForm();
+        });
+    }
+  };
 
-    addDoc(collection(db, "products"), data)
-      .then(() => {
-        toast({ title: "Product Live!" });
-      })
-      .catch((err) => {
-        toast({ variant: "destructive", title: "Error", description: err.message });
-      });
+  const resetProductForm = () => {
+    setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
+    setEditingProductId(null);
+    setIsProductSheetOpen(false);
+  };
+
+  const handleEditProduct = (p: any) => {
+    setEditingProductId(p.id);
+    setProductForm({
+      name: p.name,
+      mrp: p.mrp.toString(),
+      price: p.price.toString(),
+      unit: p.unit || "",
+      category: p.category,
+      description: p.description || "",
+      imageData: p.imageUrl,
+      isTopRated: p.isTopRated || false
+    });
+    setIsProductSheetOpen(true);
   };
 
   const handleAddCategory = () => {
     if (!categoryForm.name || !categoryForm.imageData) return;
-    addDoc(collection(db, "categories"), { 
+    
+    const data = { 
       name: categoryForm.name,
       imageUrl: categoryForm.imageData,
-      createdAt: serverTimestamp() 
-    })
-      .then(() => {
-        toast({ title: "Category Created" });
-        setCategoryForm({ name: "", imageData: "" });
-      });
+      updatedAt: serverTimestamp() 
+    };
+
+    if (editingCategoryId) {
+      updateDoc(doc(db, "categories", editingCategoryId), data)
+        .then(() => {
+          toast({ title: "Category Updated" });
+          resetCategoryForm();
+        });
+    } else {
+      addDoc(collection(db, "categories"), { ...data, createdAt: serverTimestamp() })
+        .then(() => {
+          toast({ title: "Category Created" });
+          resetCategoryForm();
+        });
+    }
+  };
+
+  const resetCategoryForm = () => {
+    setCategoryForm({ name: "", imageData: "" });
+    setEditingCategoryId(null);
+    setIsCategorySheetOpen(false);
+  };
+
+  const handleEditCategory = (cat: any) => {
+    setEditingCategoryId(cat.id);
+    setCategoryForm({
+      name: cat.name,
+      imageData: cat.imageUrl
+    });
+    setIsCategorySheetOpen(true);
   };
 
   const handleAddBanner = () => {
@@ -271,15 +331,43 @@ export default function AdminPage() {
 
   const handleAddCoupon = () => {
     if (!couponForm.code || !couponForm.value) return;
-    addDoc(collection(db, "coupons"), {
+    
+    const data = {
       code: couponForm.code.toUpperCase(),
       value: Number(couponForm.value),
       discountType: couponForm.type,
-      createdAt: serverTimestamp()
-    }).then(() => {
-      toast({ title: "Coupon Added!" });
-      setCouponForm({ code: "", value: "", type: "fixed" });
+      updatedAt: serverTimestamp()
+    };
+
+    if (editingCouponId) {
+      updateDoc(doc(db, "coupons", editingCouponId), data)
+        .then(() => {
+          toast({ title: "Coupon Updated!" });
+          resetCouponForm();
+        });
+    } else {
+      addDoc(collection(db, "coupons"), { ...data, createdAt: serverTimestamp() })
+        .then(() => {
+          toast({ title: "Coupon Added!" });
+          resetCouponForm();
+        });
+    }
+  };
+
+  const resetCouponForm = () => {
+    setCouponForm({ code: "", value: "", type: "fixed" });
+    setEditingCouponId(null);
+    setIsCouponSheetOpen(false);
+  };
+
+  const handleEditCoupon = (c: any) => {
+    setEditingCouponId(c.id);
+    setCouponForm({
+      code: c.code,
+      value: c.value.toString(),
+      type: c.discountType
     });
+    setIsCouponSheetOpen(true);
   };
 
   const menuItems = [
@@ -391,11 +479,11 @@ export default function AdminPage() {
                 <Button variant="outline" onClick={() => csvFileRef.current?.click()} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
                 <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
                   <SheetTrigger asChild>
-                    <Button className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                    <Button onClick={() => setEditingProductId(null)} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                   </SheetTrigger>
                   <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0">
                     <ScrollArea className="h-full px-8 py-8">
-                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">Add Product</SheetTitle></SheetHeader>
+                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
                       <div className="space-y-6 pb-20 max-w-xl mx-auto">
                         <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
                           {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
@@ -427,7 +515,7 @@ export default function AdminPage() {
                         </div>
 
                         <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
-                          Publish Live
+                          {editingProductId ? "Update Changes" : "Publish Live"}
                         </Button>
                       </div>
                     </ScrollArea>
@@ -444,7 +532,10 @@ export default function AdminPage() {
                     <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" />
                     <div><h4 className="font-bold text-gray-800">{p.name}</h4><p className="text-[10px] font-black text-primary uppercase">{p.category}</p><p className="text-sm font-black">₹{p.price}</p></div>
                   </div>
-                  <Button variant="ghost" size="icon" className="text-gray-200 hover:text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}><Trash2 className="w-5 h-5" /></Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="text-gray-200 hover:text-primary" onClick={() => handleEditProduct(p)}><Edit3 className="w-4 h-4" /></Button>
+                    <Button variant="ghost" size="icon" className="text-gray-200 hover:text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}><Trash2 className="w-4 h-4" /></Button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -453,23 +544,34 @@ export default function AdminPage() {
 
         {view === "categories" && (
           <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
-            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
-              <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
-                <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
-              </div>
-              <div className="flex gap-2">
-                <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                <Button onClick={handleAddCategory} className="h-14 w-14 rounded-2xl bg-black"><Plus className="w-6 h-6 text-white" /></Button>
-              </div>
-            </Card>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
+              <Sheet open={isCategorySheetOpen} onOpenChange={setIsCategorySheetOpen}>
+                <SheetTrigger asChild>
+                  <Button onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: "", imageData: "" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white">
+                  <div className="p-8 max-w-xl mx-auto space-y-6">
+                    <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
+                    <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                      {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
+                      <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
+                    </div>
+                    <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                    <Button onClick={handleAddCategory} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCategoryId ? "Update Category" : "Add Category"}</Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {categories?.map((cat: any) => (
-                <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg">
+                <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg group">
                   <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" />
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
-                  <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-4 right-4 text-gray-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                  <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEditCategory(cat)} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -503,23 +605,36 @@ export default function AdminPage() {
 
         {view === "coupons" && (
            <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">COUPONS</h2>
-            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
-              <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <div className="flex gap-2">
-                <Input type="number" placeholder="Value" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                <Select value={couponForm.type} onValueChange={val => setCouponForm({...couponForm, type: val})}>
-                  <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold w-32"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleAddCoupon} className="h-14 rounded-2xl bg-black w-full font-bold">ADD COUPON</Button>
-            </Card>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black italic uppercase">COUPONS</h2>
+              <Sheet open={isCouponSheetOpen} onOpenChange={setIsCouponSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button onClick={() => { setEditingCouponId(null); setCouponForm({ code: "", value: "", type: "fixed" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white">
+                  <div className="p-8 max-w-xl mx-auto space-y-6">
+                    <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCouponId ? "Edit Coupon" : "Add Coupon"}</SheetTitle></SheetHeader>
+                    <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                    <div className="flex gap-2">
+                      <Input type="number" placeholder="Value" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <Select value={couponForm.type} onValueChange={val => setCouponForm({...couponForm, type: val})}>
+                        <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold w-32"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Update Coupon" : "Add Coupon"}</Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {coupons?.map((c: any) => (
-                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
+                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
                   <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
-                  <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditCoupon(c)} className="text-primary"><Edit3 className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                  </div>
                 </Card>
               ))}
             </div>
