@@ -749,7 +749,7 @@ export default function AdminPage() {
               <Sheet open={isCouponSheetOpen} onOpenChange={setIsCouponSheetOpen}>
                 <SheetTrigger asChild>
                   <Button onClick={() => { setEditingCouponId(null); setCouponForm({ code: "", value: "", type: "fixed" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
-                </Trigger>
+                </SheetTrigger>
                 <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
                   <div className="p-8 max-w-xl mx-auto space-y-6">
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCouponId ? "Edit Coupon" : "Add Coupon"}</SheetTitle></SheetHeader>
