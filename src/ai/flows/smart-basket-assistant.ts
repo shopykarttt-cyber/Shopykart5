@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Smart Basket Assistant that suggests optimized grocery bundles and recipes.
@@ -9,6 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/google-genai';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
@@ -61,6 +63,7 @@ export async function smartBasketAssistant(
 
 const smartBasketAssistantPrompt = ai.definePrompt({
   name: 'smartBasketAssistantPrompt',
+  model: googleAI.model('gemini-1.5-flash'),
   input: {schema: SmartBasketAssistantInputSchema},
   output: {schema: SmartBasketAssistantOutputSchema},
   prompt: `You are a smart grocery basket assistant. Your goal is to help users plan their meals and shopping lists by suggesting optimized grocery bundles and relevant recipes based on their search intent and seasonal trends.
@@ -89,7 +92,7 @@ const smartBasketAssistantFlow = ai.defineFlow(
         return output!;
       } catch (error: any) {
         attempts++;
-        const isServiceUnavailable = error.message?.includes('503') || error.message?.includes('high demand');
+        const isServiceUnavailable = error.message?.includes('503') || error.message?.includes('high demand') || error.message?.includes('404');
         
         if (attempts >= maxAttempts || !isServiceUnavailable) {
           throw error;
