@@ -86,13 +86,21 @@
     },
     "Zone": {
       "title": "Zone",
-      "description": "Delivery zones and pincodes",
+      "description": "Delivery zones with boundary points",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "pincode": { "type": "string" },
-        "lat": { "type": "number" },
-        "lng": { "type": "number" },
+        "points": { 
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "lat": { "type": "number" },
+              "lng": { "type": "number" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "pincode"]

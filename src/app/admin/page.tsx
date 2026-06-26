@@ -20,7 +20,8 @@ import {
   Star,
   Edit3,
   MapPin,
-  Map as MapIcon
+  Map as MapIcon,
+  RotateCcw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ import { Label } from "@/components/ui/label";
 const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
 const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+const Polygon = dynamic(() => import('react-leaflet').then(mod => mod.Polygon), { ssr: false });
+const Polyline = dynamic(() => import('react-leaflet').then(mod => mod.Polyline), { ssr: false });
 const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
 
 const SALES_DATA = [
@@ -72,16 +75,13 @@ const SALES_DATA = [
   { day: "Sat", sales: 500 },
 ];
 
-function LocationMarker({ position, setPosition }: { position: [number, number] | null, setPosition: (pos: [number, number]) => void }) {
-  const map = (useMapEvents as any)({
+function MapEventsHandler({ onMapClick }: { onMapClick: (pos: [number, number]) => void }) {
+  (useMapEvents as any)({
     click(e: any) {
-      setPosition([e.latlng.lat, e.latlng.lng]);
+      onMapClick([e.latlng.lat, e.latlng.lng]);
     },
   });
-
-  return position === null ? null : (
-    <Marker position={position}></Marker>
-  );
+  return null;
 }
 
 export default function AdminPage() {
@@ -106,11 +106,10 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
   const bannerFileRef = useRef<HTMLInputElement>(null);
 
-  const [zonePosition, setZonePosition] = useState<[number, number] | null>([28.6139, 77.2090]); // Default Delhi
+  const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
 
   useEffect(() => {
     setIsClient(true);
-    // Fix Leaflet icon issue in Next.js
     if (typeof window !== 'undefined') {
       const L = require('leaflet');
       delete L.Icon.Default.prototype._getIconUrl;
@@ -192,12 +191,10 @@ export default function AdminPage() {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-
           if (width > maxWidth) {
             height = (maxWidth / width) * height;
             width = maxWidth;
           }
-
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
@@ -236,13 +233,11 @@ export default function AdminPage() {
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (event) => {
       const text = event.target?.result as string;
       const rows = text.split('\n').map(row => row.split(','));
       const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
-
       let successCount = 0;
       for (const row of dataRows) {
         const name = row[0]?.trim();
@@ -251,7 +246,6 @@ export default function AdminPage() {
         const unit = row[3]?.trim();
         const category = row[4]?.trim();
         const description = row[5]?.trim() || "";
-
         if (name && !isNaN(mrp) && !isNaN(price) && category) {
           addDoc(collection(db, "products"), {
             name, mrp, price, unit, category, description,
@@ -272,7 +266,6 @@ export default function AdminPage() {
       toast({ variant: "destructive", title: "Missing Fields" });
       return;
     }
-    
     const data: any = {
       ...productForm,
       mrp: Number(productForm.mrp),
@@ -280,7 +273,6 @@ export default function AdminPage() {
       imageUrl: productForm.imageData,
       updatedAt: serverTimestamp()
     };
-
     if (editingProductId) {
       updateDoc(doc(db, "products", editingProductId), data)
         .then(() => {
@@ -321,13 +313,11 @@ export default function AdminPage() {
 
   const handleAddCategory = () => {
     if (!categoryForm.name || !categoryForm.imageData) return;
-    
     const data = { 
       name: categoryForm.name,
       imageUrl: categoryForm.imageData,
       updatedAt: serverTimestamp() 
     };
-
     if (editingCategoryId) {
       updateDoc(doc(db, "categories", editingCategoryId), data)
         .then(() => {
@@ -373,14 +363,12 @@ export default function AdminPage() {
 
   const handleAddCoupon = () => {
     if (!couponForm.code || !couponForm.value) return;
-    
     const data = {
       code: couponForm.code.toUpperCase(),
       value: Number(couponForm.value),
       discountType: couponForm.type,
       updatedAt: serverTimestamp()
     };
-
     if (editingCouponId) {
       updateDoc(doc(db, "coupons", editingCouponId), data)
         .then(() => {
@@ -413,11 +401,14 @@ export default function AdminPage() {
   };
 
   const handleAddZone = () => {
-    if (!zoneForm.name || !zoneForm.pincode) return;
+    if (!zoneForm.name || !zoneForm.pincode || zonePoints.length < 3) {
+      toast({ variant: "destructive", title: "Invalid Zone", description: "Name, Pincode and at least 3 map points required." });
+      return;
+    }
+    const formattedPoints = zonePoints.map(p => ({ lat: p[0], lng: p[1] }));
     const data: any = { 
       ...zoneForm, 
-      lat: zonePosition?.[0] || null, 
-      lng: zonePosition?.[1] || null, 
+      points: formattedPoints,
       updatedAt: serverTimestamp() 
     };
     if (editingZoneId) {
@@ -431,7 +422,7 @@ export default function AdminPage() {
 
   const resetZoneForm = () => {
     setZoneForm({ name: "", pincode: "" });
-    setZonePosition([28.6139, 77.2090]);
+    setZonePoints([]);
     setEditingZoneId(null);
     setIsZoneSheetOpen(false);
   };
@@ -439,7 +430,9 @@ export default function AdminPage() {
   const handleEditZone = (z: any) => {
     setEditingZoneId(z.id);
     setZoneForm({ name: z.name, pincode: z.pincode });
-    if (z.lat && z.lng) setZonePosition([z.lat, z.lng]);
+    if (z.points) {
+      setZonePoints(z.points.map((p: any) => [p.lat, p.lng]));
+    }
     setIsZoneSheetOpen(true);
   };
 
@@ -575,19 +568,13 @@ export default function AdminPage() {
                           </SelectContent>
                         </Select>
                         <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        
                         <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
                           <div className="flex items-center gap-3">
                             <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
                             <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
                           </div>
-                          <Switch 
-                            id="top-rated-toggle" 
-                            checked={productForm.isTopRated} 
-                            onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} 
-                          />
+                          <Switch id="top-rated-toggle" checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
                         </div>
-
                         <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
                           {editingProductId ? "Update Changes" : "Publish Live"}
                         </Button>
@@ -597,7 +584,6 @@ export default function AdminPage() {
                 </Sheet>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products?.map((p: any) => (
                 <Card key={p.id} className="p-6 rounded-[2rem] bg-white flex items-center justify-between shadow-lg relative overflow-hidden">
@@ -607,8 +593,8 @@ export default function AdminPage() {
                     <div><h4 className="font-bold text-gray-800">{p.name}</h4><p className="text-[10px] font-black text-primary uppercase">{p.category}</p><p className="text-sm font-black">₹{p.price}</p></div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="text-gray-200 hover:text-primary" onClick={() => handleEditProduct(p)}><Edit3 className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-gray-200 hover:text-red-500" onClick={() => deleteDoc(doc(db, "products", p.id))}><Trash2 className="w-4 h-4" /></Button>
+                    <button onClick={() => handleEditProduct(p)} className="text-gray-200 hover:text-primary p-2 transition-colors"><Edit3 className="w-4 h-4" /></button>
+                    <button onClick={() => deleteDoc(doc(db, "products", p.id))} className="text-gray-200 hover:text-red-500 p-2 transition-colors"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </Card>
               ))}
@@ -668,25 +654,26 @@ export default function AdminPage() {
                       <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       
                       <div className="space-y-2">
-                        <Label className="font-black text-[10px] uppercase text-gray-400">Mark delivery center on map</Label>
-                        <div className="h-64 rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
+                        <div className="flex justify-between items-end">
+                          <Label className="font-black text-[10px] uppercase text-gray-400">Draw delivery boundary on map (click points)</Label>
+                          <Button variant="ghost" size="sm" onClick={() => setZonePoints([])} className="h-6 text-[10px] gap-1 font-bold text-red-500 uppercase"><RotateCcw className="w-3 h-3" /> Clear Points</Button>
+                        </div>
+                        <div className="h-[400px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
                           {isClient && (
                             <MapContainer 
-                              center={zonePosition || [28.6139, 77.2090]} 
+                              center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
                               zoom={13} 
                               style={{ height: '100%', width: '100%' }}
                             >
-                              <TileLayer
-                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                              />
-                              <LocationMarker position={zonePosition} setPosition={setZonePosition} />
+                              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                              <MapEventsHandler onMapClick={(pos) => setZonePoints([...zonePoints, pos])} />
+                              {zonePoints.map((pos, i) => <Marker key={i} position={pos} />)}
+                              {zonePoints.length > 1 && <Polyline positions={zonePoints} color="red" />}
+                              {zonePoints.length > 2 && <Polygon positions={zonePoints} color="green" fillColor="green" fillOpacity={0.3} />}
                             </MapContainer>
                           )}
                         </div>
-                        {zonePosition && (
-                          <p className="text-[10px] font-bold text-gray-400">Coordinates: {zonePosition[0].toFixed(4)}, {zonePosition[1].toFixed(4)}</p>
-                        )}
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{zonePoints.length} points marked. Need at least 3 for a valid zone.</p>
                       </div>
 
                       <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic shadow-xl">
@@ -708,8 +695,8 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditZone(z)} className="text-primary"><Edit3 className="w-5 h-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "zones", z.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                    <button onClick={() => handleEditZone(z)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
+                    <button onClick={() => deleteDoc(doc(db, "zones", z.id))} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </Card>
               ))}
@@ -734,7 +721,7 @@ export default function AdminPage() {
                   <img src={b.imageUrl} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                    <button onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </Card>
               ))}
@@ -771,8 +758,8 @@ export default function AdminPage() {
                 <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
                   <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEditCoupon(c)} className="text-primary"><Edit3 className="w-5 h-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                    <button onClick={() => handleEditCoupon(c)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
+                    <button onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </Card>
               ))}
