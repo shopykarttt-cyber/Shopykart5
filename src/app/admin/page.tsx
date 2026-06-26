@@ -76,7 +76,7 @@ const SALES_DATA = [
 ];
 
 function MapEventsHandler({ onMapClick }: { onMapClick: (pos: [number, number]) => void }) {
-  (useMapEvents as any)({
+  const mapEvents = (useMapEvents as any)({
     click(e: any) {
       onMapClick([e.latlng.lat, e.latlng.lng]);
     },
