@@ -26,26 +26,19 @@ export default function Home() {
   // Logic to get exactly 7 featured products
   const featuredProducts = useMemo(() => {
     if (!liveProducts) return [];
-    
-    // First, try to get products marked as Top Rated
     const topRated = liveProducts.filter((p: any) => p.isTopRated === true);
-    
     if (topRated.length > 0) {
       return topRated.slice(0, 7);
     }
-    
-    // Fallback: If no top rated products, just show the latest 7 products
     return liveProducts.slice(0, 7);
   }, [liveProducts]);
 
   const filteredProducts = useMemo(() => {
     if (!liveProducts) return [];
-    
     if (selectedCategory !== "For you") {
       return liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // Show ALL products in the main grid, including Top Rated ones
-      return liveProducts;
+      return liveProducts; // Show ALL products including top rated
     }
   }, [liveProducts, selectedCategory]);
 
@@ -54,14 +47,12 @@ export default function Home() {
       <ZoneSelector />
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Categories & Gradient */}
         <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[3rem] shadow-sm pb-16">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
           
-          {/* Top Rated Section (Premium Choice) - Now ABOVE the feature bar */}
           {featuredProducts.length > 0 && selectedCategory === "For you" && (
             <div className="px-6 mt-4">
               <div className="flex justify-between items-center mb-4">
@@ -92,7 +83,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Feature Bar (Fast Delivery Box) */}
         <div className="px-5 -mt-8 relative z-10">
           <div className="bg-white rounded-3xl p-5 flex justify-between items-center shadow-xl border border-gray-50">
             <div className="flex items-center gap-2">
@@ -127,21 +117,18 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Banner Slider - Only visible if banners exist */}
         {selectedCategory === "For you" && (
           <div className="mt-8 mb-4">
             <BannerSlider />
           </div>
         )}
 
-        {/* Smart Basket AI Section */}
         {selectedCategory === "For you" && (
           <div className="mt-2">
             <SmartBasketAssistant />
           </div>
         )}
         
-        {/* Main Product Grid */}
         <div className="px-6 pb-28 pt-6">
           <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
             {selectedCategory === "For you" ? "All Products" : selectedCategory}
