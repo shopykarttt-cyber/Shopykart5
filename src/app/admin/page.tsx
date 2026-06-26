@@ -18,7 +18,8 @@ import {
   ShoppingBag,
   Star,
   Edit3,
-  X
+  X,
+  MapPin
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -73,11 +74,13 @@ export default function AdminPage() {
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [isCouponSheetOpen, setIsCouponSheetOpen] = useState(false);
+  const [isZoneSheetOpen, setIsZoneSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
+  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
   const productFileRef = useRef<HTMLInputElement>(null);
   const csvFileRef = useRef<HTMLInputElement>(null);
@@ -112,6 +115,9 @@ export default function AdminPage() {
   const bannersQuery = useMemo(() => query(collection(db, "banners"), orderBy("createdAt", "desc")), [db]);
   const { data: banners } = useCollection(bannersQuery);
 
+  const zonesQuery = useMemo(() => query(collection(db, "zones"), orderBy("name", "asc")), [db]);
+  const { data: zones } = useCollection(zonesQuery);
+
   const [productForm, setProductForm] = useState({
     name: "",
     mrp: "",
@@ -137,6 +143,11 @@ export default function AdminPage() {
     code: "",
     value: "",
     type: "fixed"
+  });
+
+  const [zoneForm, setZoneForm] = useState({
+    name: "",
+    pincode: ""
   });
 
   const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
@@ -370,11 +381,36 @@ export default function AdminPage() {
     setIsCouponSheetOpen(true);
   };
 
+  const handleAddZone = () => {
+    if (!zoneForm.name || !zoneForm.pincode) return;
+    const data = { ...zoneForm, updatedAt: serverTimestamp() };
+    if (editingZoneId) {
+      updateDoc(doc(db, "zones", editingZoneId), data)
+        .then(() => { toast({ title: "Zone Updated" }); resetZoneForm(); });
+    } else {
+      addDoc(collection(db, "zones"), { ...data, createdAt: serverTimestamp() })
+        .then(() => { toast({ title: "Zone Created" }); resetZoneForm(); });
+    }
+  };
+
+  const resetZoneForm = () => {
+    setZoneForm({ name: "", pincode: "" });
+    setEditingZoneId(null);
+    setIsZoneSheetOpen(false);
+  };
+
+  const handleEditZone = (z: any) => {
+    setEditingZoneId(z.id);
+    setZoneForm({ name: z.name, pincode: z.pincode });
+    setIsZoneSheetOpen(true);
+  };
+
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Live Orders", icon: ShoppingBag },
     { id: "products", label: "Products", icon: Package },
     { id: "categories", label: "Category", icon: Grid },
+    { id: "zones", label: "Zones", icon: MapPin },
     { id: "banners", label: "Banners", icon: Flag },
     { id: "coupons", label: "Coupons", icon: Ticket },
     { id: "customers", label: "Customers", icon: Users },
@@ -571,6 +607,41 @@ export default function AdminPage() {
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditCategory(cat)} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "zones" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black italic uppercase">ZONES</h2>
+              <Sheet open={isZoneSheetOpen} onOpenChange={setIsZoneSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button onClick={() => { setEditingZoneId(null); setZoneForm({ name: "", pincode: "" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[50vh] rounded-t-[3rem] bg-white">
+                  <div className="p-8 max-w-xl mx-auto space-y-6">
+                    <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingZoneId ? "Edit Zone" : "Add Zone"}</SheetTitle></SheetHeader>
+                    <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                    <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                    <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingZoneId ? "Update Zone" : "Add Zone"}</Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {zones?.map((z: any) => (
+                <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
+                  <div>
+                    <h4 className="font-black text-lg">{z.name}</h4>
+                    <p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEditZone(z)} className="text-primary"><Edit3 className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => deleteDoc(doc(db, "zones", z.id))} className="text-red-500"><Trash2 className="w-5 h-5" /></Button>
                   </div>
                 </Card>
               ))}

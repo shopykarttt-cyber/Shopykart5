@@ -20,6 +20,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAuthenticated();
     }
+    match /zones/{zoneId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
 
     // Coupons are for authenticated users
     match /coupons/{couponId} {

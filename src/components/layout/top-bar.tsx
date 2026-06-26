@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Zap, ShoppingCart } from "lucide-react";
+import { Search, Zap, ShoppingCart, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CartSheet } from "@/components/cart/cart-sheet";
 import { useCart } from "@/components/cart/cart-provider";
@@ -14,6 +14,7 @@ export function TopBar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   
   // Typewriter effect states
   const [placeholder, setPlaceholder] = useState("");
@@ -22,6 +23,10 @@ export function TopBar() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
+    // Load zone
+    const savedZone = localStorage.getItem("grosify_selected_zone");
+    if (savedZone) setSelectedZone(savedZone);
+
     const currentWord = SUGGESTIONS[suggestionIndex];
     const fullText = `Search "${currentWord}"...`;
     const speed = isDeleting ? 40 : 80;
@@ -58,6 +63,17 @@ export function TopBar() {
   return (
     <div className="bg-[#FF6B00] px-5 pt-4 pb-3 sticky top-0 z-40 md:rounded-t-[2.5rem]">
       <div className="flex items-center gap-3 max-w-7xl mx-auto w-full">
+        {/* Zone Indicator */}
+        <div className="flex flex-col shrink-0">
+          <span className="text-[7px] font-black text-white/70 uppercase tracking-widest leading-none">Deliver to</span>
+          <div className="flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-white fill-white" />
+            <span className="text-[10px] font-black text-white uppercase italic leading-none truncate max-w-[60px]">
+              {selectedZone || "Select"}
+            </span>
+          </div>
+        </div>
+
         {/* Animated Search Bar */}
         <div className="relative flex-1 group">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
@@ -71,7 +87,7 @@ export function TopBar() {
         </div>
 
         {/* Points Indicator */}
-        <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
+        <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shrink-0">
           <div className="w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
             <Zap className="w-2.5 h-2.5 text-black fill-current" />
           </div>
@@ -80,7 +96,7 @@ export function TopBar() {
 
         {/* Cart Action */}
         <CartSheet>
-          <button className="relative p-1 text-white hover:scale-110 active:scale-95 transition-all">
+          <button className="relative p-1 text-white hover:scale-110 active:scale-95 transition-all shrink-0">
             <ShoppingCart className="w-6 h-6 stroke-[2.5px]" />
             {items.length > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-white text-[#FF6B00] text-[9px] font-black w-4.5 h-4.5 flex items-center justify-center rounded-full border-2 border-[#FF6B00] shadow-sm">

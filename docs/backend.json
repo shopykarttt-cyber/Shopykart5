@@ -83,6 +83,17 @@
         "joinedAt": { "type": "string", "format": "date" }
       },
       "required": ["name", "email"]
+    },
+    "Zone": {
+      "title": "Zone",
+      "description": "Delivery zones and pincodes",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "pincode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "pincode"]
     }
   },
   "auth": {
@@ -112,6 +123,10 @@
     "/customers/{customerId}": {
       "schema": "Customer",
       "description": "Store for customer profiles"
+    },
+    "/zones/{zoneId}": {
+      "schema": "Zone",
+      "description": "Store for delivery zones"
     }
   }
 }
