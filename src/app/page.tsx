@@ -18,7 +18,7 @@ export default function Home() {
   const db = useFirestore();
   const [selectedCategory, setSelectedCategory] = useState("For you");
 
-  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(50)), [db]);
+  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(100)), [db]);
   const { data: liveProducts } = useCollection(productsQuery);
 
   // Logic to get exactly 7 featured products
@@ -41,103 +41,113 @@ export default function Home() {
     
     const featuredIds = new Set(featuredProducts.map((p: any) => p.id));
     
-    let products = liveProducts;
-    
     if (selectedCategory !== "For you") {
-      products = liveProducts.filter((p: any) => p.category === selectedCategory);
+      return liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      // In "For you", show everything except those already shown in featured horizontal section
-      products = liveProducts.filter((p: any) => !featuredIds.has(p.id));
+      // In "For you", show everything EXCEPT the 7 already shown in the top horizontal section
+      return liveProducts.filter((p: any) => !featuredIds.has(p.id));
     }
-    
-    return products;
   }, [liveProducts, selectedCategory, featuredProducts]);
 
   return (
     <AuthGuard>
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
-        {/* Top Section with Categories */}
-        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[2rem] shadow-sm pb-10">
+        {/* Top Section with Categories & Gradient */}
+        <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[3rem] shadow-sm pb-16">
           <CategoryScroller 
             selectedCategory={selectedCategory} 
             onSelectCategory={setSelectedCategory} 
           />
-        </div>
-
-        {/* Feature Bar - Floating over the edges */}
-        <div className="px-5 -mt-8 relative z-10">
-          <div className="bg-white rounded-3xl p-4 flex justify-between items-center shadow-lg border border-gray-100">
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-green-600" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Secure</span>
-            </div>
-            <div className="w-px h-4 bg-gray-100" />
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-4 h-4 text-orange-500" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Fast</span>
-            </div>
-            <div className="w-px h-4 bg-gray-100" />
-            <div className="flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-blue-500" />
-              <span className="text-[10px] font-black uppercase tracking-tight text-gray-700">Quality</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Premium Choice (Exactly 7 Products) Section - Shown right after categories in For You */}
-        {featuredProducts.length > 0 && selectedCategory === "For you" && (
-          <div className="px-6 mb-6 mt-8">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight italic flex items-center gap-2">
-                <div className="bg-yellow-400 p-1.5 rounded-lg shadow-sm">
-                  <Star className="w-4 h-4 text-white fill-current" />
-                </div>
-                Premium Choice
-              </h2>
-            </div>
-            <ScrollArea className="w-full whitespace-nowrap">
-              <div className="flex gap-4 pb-6">
-                {featuredProducts.map((product: any) => (
-                  <div key={product.id} className="w-[180px] shrink-0">
-                    <ProductCard 
-                      id={product.id}
-                      name={product.name}
-                      price={product.price}
-                      mrp={product.mrp}
-                      unit={product.unit}
-                      category={product.category}
-                      imageId={product.imageUrl}
-                    />
+          
+          {/* Premium Choice (Top Rated) - Moved ABOVE the Feature Bar */}
+          {featuredProducts.length > 0 && selectedCategory === "For you" && (
+            <div className="px-6 mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-black text-black uppercase tracking-tight italic flex items-center gap-2">
+                  <div className="bg-white/30 backdrop-blur-md p-1.5 rounded-lg shadow-sm">
+                    <Star className="w-4 h-4 text-white fill-current" />
                   </div>
-                ))}
+                  Premium Choice
+                </h2>
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
-        )}
+              <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex gap-4 pb-4">
+                  {featuredProducts.map((product: any) => (
+                    <div key={product.id} className="w-[170px] shrink-0">
+                      <ProductCard 
+                        id={product.id}
+                        name={product.name}
+                        price={product.price}
+                        mrp={product.mrp}
+                        unit={product.unit}
+                        category={product.category}
+                        imageId={product.imageUrl}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <ScrollBar orientation="horizontal" className="hidden" />
+              </ScrollArea>
+            </div>
+          )}
+        </div>
 
-        {/* Banner Slider - Moves below the 7 products, hides if no banners exist */}
+        {/* Feature Bar (Fast Delivery Box) - Floating over the edges */}
+        <div className="px-5 -mt-8 relative z-10">
+          <div className="bg-white rounded-3xl p-5 flex justify-between items-center shadow-xl border border-gray-50">
+            <div className="flex items-center gap-2">
+              <div className="bg-green-50 p-2 rounded-xl">
+                <ShieldCheck className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-800">Secure</span>
+                <span className="text-[8px] text-gray-400 font-bold uppercase">Payments</span>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-gray-100" />
+            <div className="flex items-center gap-2">
+              <div className="bg-orange-50 p-2 rounded-xl">
+                <Zap className="w-5 h-5 text-orange-500" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-800">Fast</span>
+                <span className="text-[8px] text-gray-400 font-bold uppercase">Delivery</span>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-gray-100" />
+            <div className="flex items-center gap-2">
+              <div className="bg-blue-50 p-2 rounded-xl">
+                <Award className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-tight text-gray-800">Quality</span>
+                <span className="text-[8px] text-gray-400 font-bold uppercase">Organic</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Banner Slider */}
         {selectedCategory === "For you" && (
-          <div className="mb-6">
+          <div className="mt-8 mb-4">
             <BannerSlider />
           </div>
         )}
 
         {/* Smart Basket AI Section */}
         {selectedCategory === "For you" && (
-          <div className="mt-4">
+          <div className="mt-2">
             <SmartBasketAssistant />
           </div>
         )}
         
-        {/* Main Product Grid */}
-        <div className="px-6 pb-20 pt-4">
-          {selectedCategory !== "For you" && (
-            <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
-              {selectedCategory}
-            </h2>
-          )}
+        {/* Main Product Grid - Shows all products below AI */}
+        <div className="px-6 pb-28 pt-6">
+          <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
+            {selectedCategory === "For you" ? "Fresh in Store" : selectedCategory}
+          </h2>
+          
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
@@ -157,7 +167,7 @@ export default function Home() {
                  <div className="bg-gray-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto border border-gray-100">
                    <Package className="w-10 h-10 text-gray-200" />
                  </div>
-                 <p className="text-xs font-black text-gray-300 uppercase tracking-widest">Store is empty</p>
+                 <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No products found</p>
               </div>
             )}
           </div>
