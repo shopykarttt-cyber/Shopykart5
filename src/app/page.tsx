@@ -6,13 +6,14 @@ import { TopBar } from "@/components/layout/top-bar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BannerSlider } from "@/components/home/banner-slider";
 import { CategoryScroller } from "@/components/home/category-scroller";
-import { ProductCard } from "@/components/home/product-card";
+import { FeaturedProductCard } from "@/components/home/featured-product-card";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
 import { Package, Star, ShieldCheck, Zap, Award } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
+import { ProductCard } from "@/components/home/product-card";
 
 export default function Home() {
   const db = useFirestore();
@@ -60,7 +61,7 @@ export default function Home() {
             onSelectCategory={setSelectedCategory} 
           />
           
-          {/* Premium Choice (Top Rated) - Moved ABOVE the Feature Bar */}
+          {/* Top Rated Section - NEW UI */}
           {featuredProducts.length > 0 && selectedCategory === "For you" && (
             <div className="px-6 mt-4">
               <div className="flex justify-between items-center mb-4">
@@ -73,18 +74,16 @@ export default function Home() {
               </div>
               <ScrollArea className="w-full whitespace-nowrap">
                 <div className="flex gap-4 pb-4">
-                  {featuredProducts.map((product: any) => (
-                    <div key={product.id} className="w-[170px] shrink-0">
-                      <ProductCard 
-                        id={product.id}
-                        name={product.name}
-                        price={product.price}
-                        mrp={product.mrp}
-                        unit={product.unit}
-                        category={product.category}
-                        imageId={product.imageUrl}
-                      />
-                    </div>
+                  {featuredProducts.map((product: any, idx: number) => (
+                    <FeaturedProductCard 
+                      key={product.id}
+                      id={product.id}
+                      name={product.name}
+                      price={product.price}
+                      mrp={product.mrp}
+                      imageUrl={product.imageUrl}
+                      index={idx}
+                    />
                   ))}
                 </div>
                 <ScrollBar orientation="horizontal" className="hidden" />
@@ -93,7 +92,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Feature Bar (Fast Delivery Box) - Floating over the edges */}
+        {/* Feature Bar (Fast Delivery Box) */}
         <div className="px-5 -mt-8 relative z-10">
           <div className="bg-white rounded-3xl p-5 flex justify-between items-center shadow-xl border border-gray-50">
             <div className="flex items-center gap-2">
@@ -142,7 +141,7 @@ export default function Home() {
           </div>
         )}
         
-        {/* Main Product Grid - Shows all products below AI */}
+        {/* Main Product Grid */}
         <div className="px-6 pb-28 pt-6">
           <h2 className="text-xl font-black text-gray-900 uppercase italic mb-6">
             {selectedCategory === "For you" ? "Fresh in Store" : selectedCategory}
