@@ -665,7 +665,7 @@ export default function AdminPage() {
                               zoom={13} 
                               style={{ height: '100%', width: '100%' }}
                             >
-                              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                              <TileLayer url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png" attribution='&copy; OpenStreetMap' />
                               <MapEventsHandler onMapClick={(pos) => setZonePoints([...zonePoints, pos])} />
                               {zonePoints.map((pos, i) => <Marker key={i} position={pos} />)}
                               {zonePoints.length > 1 && <Polyline positions={zonePoints} color="red" />}
