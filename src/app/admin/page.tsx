@@ -214,6 +214,22 @@ export default function AdminPage() {
     }
   };
 
+  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const optimized = await optimizeImage(file);
+      setCategoryForm({ ...categoryForm, imageData: optimized });
+    }
+  };
+
+  const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const optimized = await optimizeImage(file);
+      setBannerForm({ ...bannerForm, imageData: optimized });
+    }
+  };
+
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -796,4 +812,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
