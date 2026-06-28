@@ -214,22 +214,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const optimized = await optimizeImage(file);
-      setCategoryForm({ ...categoryForm, imageData: optimized });
-    }
-  };
-
-  const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const optimized = await optimizeImage(file);
-      setBannerForm({ ...bannerForm, imageData: optimized });
-    }
-  };
-
   const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -748,7 +732,7 @@ export default function AdminPage() {
                         <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Update Coupon" : "Add Coupon"}</Button>
+                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Add Coupon" : "Update Coupon"}</Button>
                   </div>
                 </SheetContent>
               </Sheet>
@@ -812,3 +796,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
