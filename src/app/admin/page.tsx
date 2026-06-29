@@ -199,7 +199,7 @@ export default function AdminPage() {
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
+          resolve(canvas.toVDataURL ? canvas.toDataURL('image/jpeg', quality) : canvas.toDataURL('image/jpeg', quality));
         };
       };
       reader.onerror = error => reject(error);
@@ -553,7 +553,7 @@ export default function AdminPage() {
                       <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
                       <div className="space-y-6 pb-20 max-w-xl mx-auto">
                         <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
-                          {productForm.imageData ? <img src={productForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+                          {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                           <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
                         </div>
                         <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
@@ -589,7 +589,7 @@ export default function AdminPage() {
                 <Card key={p.id} className="p-6 rounded-[2rem] bg-white flex items-center justify-between shadow-lg relative overflow-hidden">
                   {p.isTopRated && <div className="absolute top-0 right-0 bg-yellow-500 text-white p-1 rounded-bl-xl shadow-md"><Star className="w-3 h-3 fill-current" /></div>}
                   <div className="flex items-center gap-4">
-                    <img src={p.imageUrl} className="w-16 h-16 rounded-2xl object-cover" />
+                    <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-2xl object-cover" />
                     <div><h4 className="font-bold text-gray-800">{p.name}</h4><p className="text-[10px] font-black text-primary uppercase">{p.category}</p><p className="text-sm font-black">₹{p.price}</p></div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -614,7 +614,7 @@ export default function AdminPage() {
                   <div className="p-8 max-w-xl mx-auto space-y-6">
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
                     <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                      {categoryForm.imageData ? <img src={categoryForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
+                      {categoryForm.imageData ? <img src={categoryForm.imageData} alt="Category Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
                       <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
                     </div>
                     <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
@@ -626,7 +626,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {categories?.map((cat: any) => (
                 <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg group">
-                  <img src={cat.imageUrl} className="w-20 h-20 object-cover rounded-3xl mb-2" />
+                  <img src={cat.imageUrl} alt={cat.name} className="w-20 h-20 object-cover rounded-3xl mb-2" />
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditCategory(cat)} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
@@ -709,7 +709,7 @@ export default function AdminPage() {
             <h2 className="text-2xl font-black italic uppercase">HOME BANNERS</h2>
             <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
               <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                {bannerForm.imageData ? <img src={bannerForm.imageData} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+                {bannerForm.imageData ? <img src={bannerForm.imageData} alt="Banner Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                 <input type="file" ref={bannerFileRef} onChange={handleBannerImagePick} className="hidden" accept="image/*" />
               </div>
               <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
@@ -718,7 +718,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {banners?.map((b: any) => (
                 <Card key={b.id} className="relative h-40 rounded-[2rem] overflow-hidden group shadow-xl">
-                  <img src={b.imageUrl} className="w-full h-full object-cover" />
+                  <img src={b.imageUrl} alt={b.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
                     <button onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
@@ -748,7 +748,7 @@ export default function AdminPage() {
                         <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Add Coupon" : "Update Coupon"}</Button>
+                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Update Coupon" : "Add Coupon"}</Button>
                   </div>
                 </SheetContent>
               </Sheet>

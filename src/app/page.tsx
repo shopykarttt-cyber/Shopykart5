@@ -38,7 +38,7 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       return liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      return liveProducts; // Show ALL products including top rated
+      return liveProducts; // Show ALL products including top rated in the general list
     }
   }, [liveProducts, selectedCategory]);
 
