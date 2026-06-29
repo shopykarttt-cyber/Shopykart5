@@ -23,7 +23,6 @@ export default function Home() {
   const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc"), limit(500)), [db]);
   const { data: liveProducts } = useCollection(productsQuery);
 
-  // Logic to get exactly 7 featured products
   const featuredProducts = useMemo(() => {
     if (!liveProducts) return [];
     const topRated = liveProducts.filter((p: any) => p.isTopRated === true);
@@ -38,7 +37,7 @@ export default function Home() {
     if (selectedCategory !== "For you") {
       return liveProducts.filter((p: any) => p.category === selectedCategory);
     } else {
-      return liveProducts; // Show ALL products including top rated in the general list
+      return liveProducts;
     }
   }, [liveProducts, selectedCategory]);
 
