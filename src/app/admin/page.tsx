@@ -59,6 +59,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+// Optimized Map Component with better error handling
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
@@ -144,7 +145,6 @@ export default function AdminPage() {
     }
   }, [user, authLoading, router]);
 
-  // Defensive queries: only run when user is authenticated
   const customersQuery = useMemo(() => user ? query(collection(db, "customers"), orderBy("joinedAt", "desc")) : null, [db, user]);
   const { data: customers } = useCollection(customersQuery);
 
@@ -167,36 +167,13 @@ export default function AdminPage() {
   const { data: zones } = useCollection(zonesQuery);
 
   const [productForm, setProductForm] = useState({
-    name: "",
-    mrp: "",
-    price: "",
-    unit: "",
-    category: "",
-    description: "",
-    imageData: "",
-    isTopRated: false
+    name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false
   });
 
-  const [categoryForm, setCategoryForm] = useState({
-    name: "",
-    imageData: "" 
-  });
-
-  const [bannerForm, setBannerForm] = useState({
-    title: "",
-    imageData: ""
-  });
-
-  const [couponForm, setCouponForm] = useState({
-    code: "",
-    value: "",
-    type: "fixed"
-  });
-
-  const [zoneForm, setZoneForm] = useState({
-    name: "",
-    pincode: ""
-  });
+  const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
+  const [bannerForm, setBannerForm] = useState({ title: "", imageData: "" });
+  const [couponForm, setCouponForm] = useState({ code: "", value: "", type: "fixed" });
+  const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
 
   const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -229,22 +206,6 @@ export default function AdminPage() {
     if (file) {
       const optimized = await optimizeImage(file);
       setProductForm(prev => ({ ...prev, imageData: optimized }));
-    }
-  };
-
-  const handleCategoryImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const optimized = await optimizeImage(file);
-      setCategoryForm(prev => ({ ...prev, imageData: optimized }));
-    }
-  };
-
-  const handleBannerImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const optimized = await optimizeImage(file);
-      setBannerForm(prev => ({ ...prev, imageData: optimized }));
     }
   };
 
@@ -301,10 +262,7 @@ export default function AdminPage() {
     };
     if (editingProductId) {
       updateDoc(doc(db, "products", editingProductId), data)
-        .then(() => {
-          toast({ title: "Product Updated!" });
-          resetProductForm();
-        })
+        .then(() => { toast({ title: "Product Updated!" }); resetProductForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `products/${editingProductId}`,
@@ -315,10 +273,7 @@ export default function AdminPage() {
     } else {
       const newProduct = { ...data, createdAt: serverTimestamp() };
       addDoc(collection(db, "products"), newProduct)
-        .then(() => {
-          toast({ title: "Product Live!" });
-          resetProductForm();
-        })
+        .then(() => { toast({ title: "Product Live!" }); resetProductForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'products',
@@ -359,10 +314,7 @@ export default function AdminPage() {
     };
     if (editingCategoryId) {
       updateDoc(doc(db, "categories", editingCategoryId), data)
-        .then(() => {
-          toast({ title: "Category Updated" });
-          resetCategoryForm();
-        })
+        .then(() => { toast({ title: "Category Updated" }); resetCategoryForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `categories/${editingCategoryId}`,
@@ -373,10 +325,7 @@ export default function AdminPage() {
     } else {
       const newCat = { ...data, createdAt: serverTimestamp() };
       addDoc(collection(db, "categories"), newCat)
-        .then(() => {
-          toast({ title: "Category Created" });
-          resetCategoryForm();
-        })
+        .then(() => { toast({ title: "Category Created" }); resetCategoryForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'categories',
@@ -391,15 +340,6 @@ export default function AdminPage() {
     setCategoryForm({ name: "", imageData: "" });
     setEditingCategoryId(null);
     setIsCategorySheetOpen(false);
-  };
-
-  const handleEditCategory = (cat: any) => {
-    setEditingCategoryId(cat.id);
-    setCategoryForm({
-      name: cat.name ?? "",
-      imageData: cat.imageUrl ?? ""
-    });
-    setIsCategorySheetOpen(true);
   };
 
   const handleAddBanner = () => {
@@ -433,10 +373,7 @@ export default function AdminPage() {
     };
     if (editingCouponId) {
       updateDoc(doc(db, "coupons", editingCouponId), data)
-        .then(() => {
-          toast({ title: "Coupon Updated!" });
-          resetCouponForm();
-        })
+        .then(() => { toast({ title: "Coupon Updated!" }); resetCouponForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: `coupons/${editingCouponId}`,
@@ -447,10 +384,7 @@ export default function AdminPage() {
     } else {
       const newCoupon = { ...data, createdAt: serverTimestamp() };
       addDoc(collection(db, "coupons"), newCoupon)
-        .then(() => {
-          toast({ title: "Coupon Added!" });
-          resetCouponForm();
-        })
+        .then(() => { toast({ title: "Coupon Added!" }); resetCouponForm(); })
         .catch(async () => {
           errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'coupons',
@@ -465,16 +399,6 @@ export default function AdminPage() {
     setCouponForm({ code: "", value: "", type: "fixed" });
     setEditingCouponId(null);
     setIsCouponSheetOpen(false);
-  };
-
-  const handleEditCoupon = (c: any) => {
-    setEditingCouponId(c.id);
-    setCouponForm({
-      code: c.code ?? "",
-      value: c.value?.toString() ?? "",
-      type: c.discountType ?? "fixed"
-    });
-    setIsCouponSheetOpen(true);
   };
 
   const handleAddZone = () => {
@@ -517,15 +441,6 @@ export default function AdminPage() {
     setZonePoints([]);
     setEditingZoneId(null);
     setIsZoneSheetOpen(false);
-  };
-
-  const handleEditZone = (z: any) => {
-    setEditingZoneId(z.id);
-    setZoneForm({ name: z.name ?? "", pincode: z.pincode ?? "" });
-    if (z.points) {
-      setZonePoints(z.points.map((p: any) => [p.lat, p.lng]));
-    }
-    setIsZoneSheetOpen(true);
   };
 
   const menuItems = [
@@ -686,20 +601,7 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleEditProduct(p)} className="text-gray-200 hover:text-primary p-2 transition-colors"><Edit3 className="w-4 h-4" /></button>
-                    <button 
-                      onClick={() => {
-                        deleteDoc(doc(db, "products", p.id))
-                          .catch(async () => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                              path: `products/${p.id}`,
-                              operation: 'delete'
-                            }));
-                          });
-                      }} 
-                      className="text-gray-200 hover:text-red-500 p-2 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => { deleteDoc(doc(db, "products", p.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `products/${p.id}`, operation: 'delete' })); }); }} className="text-gray-200 hover:text-red-500 p-2 transition-colors"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </Card>
               ))}
@@ -720,7 +622,7 @@ export default function AdminPage() {
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
                     <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
                       {categoryForm.imageData ? <img src={categoryForm.imageData} alt="Category Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
-                      <input type="file" ref={categoryFileRef} onChange={handleCategoryImagePick} className="hidden" accept="image/*" />
+                      <input type="file" ref={categoryFileRef} onChange={e => { const file = e.target.files?.[0]; if (file) optimizeImage(file).then(opt => setCategoryForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
                     </div>
                     <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                     <Button onClick={handleAddCategory} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCategoryId ? "Update Category" : "Add Category"}</Button>
@@ -735,20 +637,7 @@ export default function AdminPage() {
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditCategory(cat)} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button 
-                      onClick={() => {
-                        deleteDoc(doc(db, "categories", cat.id))
-                          .catch(async () => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                              path: `categories/${cat.id}`,
-                              operation: 'delete'
-                            }));
-                          });
-                      }} 
-                      className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <button onClick={() => { deleteDoc(doc(db, "categories", cat.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `categories/${cat.id}`, operation: 'delete' })); }); }} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </Card>
               ))}
@@ -767,30 +656,19 @@ export default function AdminPage() {
                 <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white z-[1001] p-0">
                   <ScrollArea className="h-full px-8 py-8">
                     <div className="p-8 max-w-2xl mx-auto space-y-6">
-                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingZoneId ? "Edit Zone" : "Add Zone"}</SheetTitle></SheetHeader>
-                      <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">Add/Edit Zone</SheetTitle></SheetHeader>
+                      <Input placeholder="Zone Name" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-end">
-                          <Label className="font-black text-[10px] uppercase text-gray-400">Draw delivery boundary on map (click points)</Label>
-                          <Button variant="ghost" size="sm" onClick={() => setZonePoints([])} className="h-6 text-[10px] gap-1 font-bold text-red-500 uppercase"><RotateCcw className="w-3 h-3" /> Clear Points</Button>
-                        </div>
-                        <div className="h-[400px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
-                          {isClient && (
-                            <ZoneMap 
-                              center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
-                              points={zonePoints}
-                              onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
-                            />
-                          )}
-                        </div>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{zonePoints.length} points marked. Need at least 3 for a valid zone.</p>
+                      <div className="h-[400px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
+                        {isClient && (
+                          <ZoneMap 
+                            center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
+                            points={zonePoints}
+                            onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
+                          />
+                        )}
                       </div>
-
-                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic shadow-xl">
-                        {editingZoneId ? "Update Zone" : "Create Zone"}
-                      </Button>
+                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic shadow-xl">Save Zone</Button>
                     </div>
                   </ScrollArea>
                 </SheetContent>
@@ -798,31 +676,9 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {zones?.map((z: any) => (
-                <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div>
-                    <div>
-                      <h4 className="font-black text-lg">{z.name}</h4>
-                      <p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleEditZone(z)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
-                    <button 
-                      onClick={() => {
-                        deleteDoc(doc(db, "zones", z.id))
-                          .catch(async () => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                              path: `zones/${z.id}`,
-                              operation: 'delete'
-                            }));
-                          });
-                      }} 
-                      className="text-red-500 p-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+                <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
+                  <div className="flex items-center gap-4"><div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div><div><h4 className="font-black text-lg">{z.name}</h4><p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p></div></div>
+                  <button onClick={() => { deleteDoc(doc(db, "zones", z.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `zones/${z.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                 </Card>
               ))}
             </div>
@@ -835,7 +691,7 @@ export default function AdminPage() {
             <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
               <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
                 {bannerForm.imageData ? <img src={bannerForm.imageData} alt="Banner Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                <input type="file" ref={bannerFileRef} onChange={handleBannerImagePick} className="hidden" accept="image/*" />
+                <input type="file" ref={bannerFileRef} onChange={e => { const file = e.target.files?.[0]; if (file) optimizeImage(file).then(opt => setBannerForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
               </div>
               <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
               <Button onClick={handleAddBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic">Upload Banner</Button>
@@ -846,20 +702,7 @@ export default function AdminPage() {
                   <img src={b.imageUrl} alt={b.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <button 
-                      onClick={() => {
-                        deleteDoc(doc(db, "banners", b.id))
-                          .catch(async () => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                              path: `banners/${b.id}`,
-                              operation: 'delete'
-                            }));
-                          });
-                      }} 
-                      className="text-white hover:text-red-500 p-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                    <button onClick={() => { deleteDoc(doc(db, "banners", b.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `banners/${b.id}`, operation: 'delete' })); }); }} className="text-white hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                   </div>
                 </Card>
               ))}
@@ -886,32 +729,16 @@ export default function AdminPage() {
                         <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCouponId ? "Update Coupon" : "Add Coupon"}</Button>
+                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">Save Coupon</Button>
                   </div>
                 </SheetContent>
               </Sheet>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {coupons?.map((c: any) => (
-                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary group">
+                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
                   <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleEditCoupon(c)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
-                    <button 
-                      onClick={() => {
-                        deleteDoc(doc(db, "coupons", c.id))
-                          .catch(async () => {
-                            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                              path: `coupons/${c.id}`,
-                              operation: 'delete'
-                            }));
-                          });
-                      }} 
-                      className="text-red-500 p-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
+                  <button onClick={() => { deleteDoc(doc(db, "coupons", c.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `coupons/${c.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                 </Card>
               ))}
             </div>
@@ -949,10 +776,6 @@ export default function AdminPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Users className="w-6 h-6 text-primary" /></div>
                     <div><h4 className="font-bold text-gray-900">{customer.name}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{customer.email}</p></div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-black text-gray-300 uppercase">Joined</p>
-                    <p className="text-xs font-bold text-gray-500">{customer.joinedAt ? new Date(customer.joinedAt).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </Card>
               ))}
