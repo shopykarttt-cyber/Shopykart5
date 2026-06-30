@@ -57,12 +57,38 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
-const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
-const Polygon = dynamic(() => import('react-leaflet').then(mod => mod.Polygon), { ssr: false });
-const Polyline = dynamic(() => import('react-leaflet').then(mod => mod.Polyline), { ssr: false });
-const useMapEvents = dynamic(() => import('react-leaflet').then(mod => mod.useMapEvents), { ssr: false });
+// Define a proper client-side only Map component
+const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
+  const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
+  
+  function MapEvents({ onClick }: { onClick: (pos: [number, number]) => void }) {
+    useMapEvents({
+      click(e) {
+        onClick([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+    return null;
+  }
+
+  return function MapComponent({ 
+    points, 
+    onMapClick, 
+    center 
+  }: { 
+    points: [number, number][], 
+    onMapClick: (pos: [number, number]) => void,
+    center: [number, number]
+  }) {
+    return (
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png" />
+        <MapEvents onClick={onMapClick} />
+        {points.map((pos, i) => <Marker key={i} position={pos} />)}
+        {points.length > 1 && <Polyline positions={points} color="red" />}
+        {points.length > 2 && <Polygon positions={points} color="green" fillColor="green" fillOpacity={0.3} />}
+      </MapContainer>
+    );
+  }), { ssr: false });
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -73,15 +99,6 @@ const SALES_DATA = [
   { day: "Fri", sales: 3800 },
   { day: "Sat", sales: 500 },
 ];
-
-function MapEventsHandler({ onMapClick }: { onMapClick: (pos: [number, number]) => void }) {
-  const mapEvents = (useMapEvents as any)({
-    click(e: any) {
-      onMapClick([e.latlng.lat, e.latlng.lng]);
-    },
-  });
-  return null;
-}
 
 export default function AdminPage() {
   const router = useRouter();
@@ -659,17 +676,11 @@ export default function AdminPage() {
                         </div>
                         <div className="h-[400px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
                           {isClient && (
-                            <MapContainer 
+                            <ZoneMap 
                               center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
-                              zoom={13} 
-                              style={{ height: '100%', width: '100%' }}
-                            >
-                              <TileLayer url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png" attribution='&copy; OpenStreetMap' />
-                              <MapEventsHandler onMapClick={(pos) => setZonePoints([...zonePoints, pos])} />
-                              {zonePoints.map((pos, i) => <Marker key={i} position={pos} />)}
-                              {zonePoints.length > 1 && <Polyline positions={zonePoints} color="red" />}
-                              {zonePoints.length > 2 && <Polygon positions={zonePoints} color="green" fillColor="green" fillOpacity={0.3} />}
-                            </MapContainer>
+                              points={zonePoints}
+                              onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
+                            />
                           )}
                         </div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{zonePoints.length} points marked. Need at least 3 for a valid zone.</p>
