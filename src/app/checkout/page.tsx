@@ -12,6 +12,8 @@ import { MapPin, CreditCard, ShoppingBag, ArrowLeft, CheckCircle2, Loader2 } fro
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
@@ -40,15 +42,20 @@ export default function CheckoutPage() {
       createdAt: serverTimestamp(),
     };
 
-    try {
-      await addDoc(collection(db, "orders"), orderData);
-      setStep(3);
-      clearCart();
-    } catch (e) {
-      toast({ variant: "destructive", title: "Order Failed", description: "Something went wrong." });
-    } finally {
-      setLoading(false);
-    }
+    addDoc(collection(db, "orders"), orderData)
+      .then(() => {
+        setStep(3);
+        clearCart();
+        setLoading(false);
+      })
+      .catch(async () => {
+        setLoading(false);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'orders',
+          operation: 'create',
+          requestResourceData: orderData
+        } satisfies SecurityRuleContext));
+      });
   };
 
   if (items.length === 0 && step !== 3) {

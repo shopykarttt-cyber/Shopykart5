@@ -30,6 +30,8 @@ import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import {
   Sheet,
   SheetContent,
@@ -142,25 +144,26 @@ export default function AdminPage() {
     }
   }, [user, authLoading, router]);
 
-  const customersQuery = useMemo(() => query(collection(db, "customers"), orderBy("joinedAt", "desc")), [db]);
+  // Defensive queries: only run when user is authenticated
+  const customersQuery = useMemo(() => user ? query(collection(db, "customers"), orderBy("joinedAt", "desc")) : null, [db, user]);
   const { data: customers } = useCollection(customersQuery);
 
-  const productsQuery = useMemo(() => query(collection(db, "products"), orderBy("createdAt", "desc")), [db]);
+  const productsQuery = useMemo(() => user ? query(collection(db, "products"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: products } = useCollection(productsQuery);
 
-  const categoriesQuery = useMemo(() => query(collection(db, "categories"), orderBy("name", "asc")), [db]);
+  const categoriesQuery = useMemo(() => user ? query(collection(db, "categories"), orderBy("name", "asc")) : null, [db, user]);
   const { data: categories } = useCollection(categoriesQuery);
 
-  const couponsQuery = useMemo(() => query(collection(db, "coupons"), orderBy("code", "asc")), [db]);
+  const couponsQuery = useMemo(() => user ? query(collection(db, "coupons"), orderBy("code", "asc")) : null, [db, user]);
   const { data: coupons } = useCollection(couponsQuery);
 
-  const ordersQuery = useMemo(() => query(collection(db, "orders"), orderBy("createdAt", "desc")), [db]);
+  const ordersQuery = useMemo(() => user ? query(collection(db, "orders"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: orders } = useCollection(ordersQuery);
 
-  const bannersQuery = useMemo(() => query(collection(db, "banners"), orderBy("createdAt", "desc")), [db]);
+  const bannersQuery = useMemo(() => user ? query(collection(db, "banners"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: banners } = useCollection(bannersQuery);
 
-  const zonesQuery = useMemo(() => query(collection(db, "zones"), orderBy("name", "asc")), [db]);
+  const zonesQuery = useMemo(() => user ? query(collection(db, "zones"), orderBy("name", "asc")) : null, [db, user]);
   const { data: zones } = useCollection(zonesQuery);
 
   const [productForm, setProductForm] = useState({
@@ -262,12 +265,20 @@ export default function AdminPage() {
         const category = row[4]?.trim();
         const description = row[5]?.trim() || "";
         if (name && !isNaN(mrp) && !isNaN(price) && category) {
-          addDoc(collection(db, "products"), {
+          const productData = {
             name, mrp, price, unit, category, description,
             isTopRated: false,
             imageUrl: `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
             createdAt: serverTimestamp()
-          });
+          };
+          addDoc(collection(db, "products"), productData)
+            .catch(async () => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'products',
+                operation: 'create',
+                requestResourceData: productData
+              }));
+            });
           successCount++;
         }
       }
@@ -293,12 +304,27 @@ export default function AdminPage() {
         .then(() => {
           toast({ title: "Product Updated!" });
           resetProductForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `products/${editingProductId}`,
+            operation: 'update',
+            requestResourceData: data
+          }));
         });
     } else {
-      addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() })
+      const newProduct = { ...data, createdAt: serverTimestamp() };
+      addDoc(collection(db, "products"), newProduct)
         .then(() => {
           toast({ title: "Product Live!" });
           resetProductForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'products',
+            operation: 'create',
+            requestResourceData: newProduct
+          }));
         });
     }
   };
@@ -336,12 +362,27 @@ export default function AdminPage() {
         .then(() => {
           toast({ title: "Category Updated" });
           resetCategoryForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `categories/${editingCategoryId}`,
+            operation: 'update',
+            requestResourceData: data
+          }));
         });
     } else {
-      addDoc(collection(db, "categories"), { ...data, createdAt: serverTimestamp() })
+      const newCat = { ...data, createdAt: serverTimestamp() };
+      addDoc(collection(db, "categories"), newCat)
         .then(() => {
           toast({ title: "Category Created" });
           resetCategoryForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'categories',
+            operation: 'create',
+            requestResourceData: newCat
+          }));
         });
     }
   };
@@ -363,14 +404,22 @@ export default function AdminPage() {
 
   const handleAddBanner = () => {
     if (!bannerForm.imageData) return;
-    addDoc(collection(db, "banners"), { 
+    const data = { 
       title: bannerForm.title,
       imageUrl: bannerForm.imageData,
       createdAt: serverTimestamp() 
-    })
+    };
+    addDoc(collection(db, "banners"), data)
       .then(() => {
         toast({ title: "Banner Uploaded" });
         setBannerForm({ title: "", imageData: "" });
+      })
+      .catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'banners',
+          operation: 'create',
+          requestResourceData: data
+        }));
       });
   };
 
@@ -387,12 +436,27 @@ export default function AdminPage() {
         .then(() => {
           toast({ title: "Coupon Updated!" });
           resetCouponForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `coupons/${editingCouponId}`,
+            operation: 'update',
+            requestResourceData: data
+          }));
         });
     } else {
-      addDoc(collection(db, "coupons"), { ...data, createdAt: serverTimestamp() })
+      const newCoupon = { ...data, createdAt: serverTimestamp() };
+      addDoc(collection(db, "coupons"), newCoupon)
         .then(() => {
           toast({ title: "Coupon Added!" });
           resetCouponForm();
+        })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'coupons',
+            operation: 'create',
+            requestResourceData: newCoupon
+          }));
         });
     }
   };
@@ -426,10 +490,25 @@ export default function AdminPage() {
     };
     if (editingZoneId) {
       updateDoc(doc(db, "zones", editingZoneId), data)
-        .then(() => { toast({ title: "Zone Updated" }); resetZoneForm(); });
+        .then(() => { toast({ title: "Zone Updated" }); resetZoneForm(); })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: `zones/${editingZoneId}`,
+            operation: 'update',
+            requestResourceData: data
+          }));
+        });
     } else {
-      addDoc(collection(db, "zones"), { ...data, createdAt: serverTimestamp() })
-        .then(() => { toast({ title: "Zone Created" }); resetZoneForm(); });
+      const newZone = { ...data, createdAt: serverTimestamp() };
+      addDoc(collection(db, "zones"), newZone)
+        .then(() => { toast({ title: "Zone Created" }); resetZoneForm(); })
+        .catch(async () => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'zones',
+            operation: 'create',
+            requestResourceData: newZone
+          }));
+        });
     }
   };
 
@@ -607,7 +686,20 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleEditProduct(p)} className="text-gray-200 hover:text-primary p-2 transition-colors"><Edit3 className="w-4 h-4" /></button>
-                    <button onClick={() => deleteDoc(doc(db, "products", p.id))} className="text-gray-200 hover:text-red-500 p-2 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <button 
+                      onClick={() => {
+                        deleteDoc(doc(db, "products", p.id))
+                          .catch(async () => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                              path: `products/${p.id}`,
+                              operation: 'delete'
+                            }));
+                          });
+                      }} 
+                      className="text-gray-200 hover:text-red-500 p-2 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </Card>
               ))}
@@ -643,7 +735,20 @@ export default function AdminPage() {
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleEditCategory(cat)} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button 
+                      onClick={() => {
+                        deleteDoc(doc(db, "categories", cat.id))
+                          .catch(async () => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                              path: `categories/${cat.id}`,
+                              operation: 'delete'
+                            }));
+                          });
+                      }} 
+                      className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </Card>
               ))}
@@ -703,7 +808,20 @@ export default function AdminPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleEditZone(z)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
-                    <button onClick={() => deleteDoc(doc(db, "zones", z.id))} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
+                    <button 
+                      onClick={() => {
+                        deleteDoc(doc(db, "zones", z.id))
+                          .catch(async () => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                              path: `zones/${z.id}`,
+                              operation: 'delete'
+                            }));
+                          });
+                      }} 
+                      className="text-red-500 p-2"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </Card>
               ))}
@@ -728,7 +846,20 @@ export default function AdminPage() {
                   <img src={b.imageUrl} alt={b.title} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
                     <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <button onClick={() => deleteDoc(doc(db, "banners", b.id))} className="text-white hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
+                    <button 
+                      onClick={() => {
+                        deleteDoc(doc(db, "banners", b.id))
+                          .catch(async () => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                              path: `banners/${b.id}`,
+                              operation: 'delete'
+                            }));
+                          });
+                      }} 
+                      className="text-white hover:text-red-500 p-2"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </Card>
               ))}
@@ -766,7 +897,20 @@ export default function AdminPage() {
                   <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => handleEditCoupon(c)} className="text-primary p-2"><Edit3 className="w-5 h-5" /></button>
-                    <button onClick={() => deleteDoc(doc(db, "coupons", c.id))} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
+                    <button 
+                      onClick={() => {
+                        deleteDoc(doc(db, "coupons", c.id))
+                          .catch(async () => {
+                            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                              path: `coupons/${c.id}`,
+                              operation: 'delete'
+                            }));
+                          });
+                      }} 
+                      className="text-red-500 p-2"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </Card>
               ))}

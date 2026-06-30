@@ -13,6 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export default function ProfilePage() {
   const auth = useAuth();
@@ -50,18 +52,25 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!user || !customerRef) return;
     setSaving(true);
-    try {
-      await updateDoc(customerRef, {
-        ...formData,
-        updatedAt: new Date().toISOString()
+    const data = {
+      ...formData,
+      updatedAt: new Date().toISOString()
+    };
+
+    updateDoc(customerRef, data)
+      .then(() => {
+        toast({ title: "Profile Updated", description: "Your changes have been saved." });
+        setIsEditing(false);
+        setSaving(false);
+      })
+      .catch(async () => {
+        setSaving(false);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: customerRef.path,
+          operation: 'update',
+          requestResourceData: data
+        } satisfies SecurityRuleContext));
       });
-      toast({ title: "Profile Updated", description: "Your changes have been saved." });
-      setIsEditing(false);
-    } catch (e) {
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not save changes." });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const menuItems = [

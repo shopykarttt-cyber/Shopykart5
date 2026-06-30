@@ -8,6 +8,8 @@ import {
   DocumentSnapshot, 
   DocumentData 
 } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
   const [data, setData] = useState<T | null>(null);
@@ -26,7 +28,14 @@ export function useDoc<T = DocumentData>(ref: DocumentReference<T> | null) {
         setData(snapshot.exists() ? { ...snapshot.data() as T, id: snapshot.id } : null);
         setLoading(false);
       },
-      (err) => {
+      async (err) => {
+        const permissionError = new FirestorePermissionError({
+          path: ref.path,
+          operation: 'get',
+        } satisfies SecurityRuleContext);
+
+        errorEmitter.emit('permission-error', permissionError);
+
         setError(err);
         setLoading(false);
       }
