@@ -57,7 +57,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// Define a proper client-side only Map component
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
@@ -83,9 +82,9 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png" />
         <MapEvents onClick={onMapClick} />
-        {points.map((pos, i) => <Marker key={i} position={pos} />)}
-        {points.length > 1 && <Polyline positions={points} color="red" />}
-        {points.length > 2 && <Polygon positions={points} color="green" fillColor="green" fillOpacity={0.3} />}
+        {points?.map((pos, i) => <Marker key={`marker-${i}`} position={pos} />)}
+        {points?.length > 1 && <Polyline positions={points} color="red" />}
+        {points?.length > 2 && <Polygon positions={points} color="green" fillColor="green" fillOpacity={0.3} />}
       </MapContainer>
     );
   }), { ssr: false });
@@ -226,7 +225,7 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (file) {
       const optimized = await optimizeImage(file);
-      setProductForm({ ...productForm, imageData: optimized });
+      setProductForm(prev => ({ ...prev, imageData: optimized }));
     }
   };
 
@@ -234,7 +233,7 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (file) {
       const optimized = await optimizeImage(file);
-      setCategoryForm({ ...categoryForm, imageData: optimized });
+      setCategoryForm(prev => ({ ...prev, imageData: optimized }));
     }
   };
 
@@ -242,7 +241,7 @@ export default function AdminPage() {
     const file = e.target.files?.[0];
     if (file) {
       const optimized = await optimizeImage(file);
-      setBannerForm({ ...bannerForm, imageData: optimized });
+      setBannerForm(prev => ({ ...prev, imageData: optimized }));
     }
   };
 
@@ -253,7 +252,7 @@ export default function AdminPage() {
     reader.onload = async (event) => {
       const text = event.target?.result as string;
       const rows = text.split('\n').map(row => row.split(','));
-      const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0].trim() !== "");
+      const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0]?.trim() !== "");
       let successCount = 0;
       for (const row of dataRows) {
         const name = row[0]?.trim();
@@ -272,7 +271,7 @@ export default function AdminPage() {
           successCount++;
         }
       }
-      toast({ title: "Importing Products", description: `Started adding ${successCount} products.` });
+      toast({ title: "Import Successful", description: `Added ${successCount} products.` });
     };
     reader.readAsText(file);
   };
@@ -282,11 +281,11 @@ export default function AdminPage() {
       toast({ variant: "destructive", title: "Missing Fields" });
       return;
     }
-    const data: any = {
+    const data = {
       ...productForm,
       mrp: Number(productForm.mrp),
       price: Number(productForm.price),
-      imageUrl: productForm.imageData,
+      imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
       updatedAt: serverTimestamp()
     };
     if (editingProductId) {
@@ -296,9 +295,7 @@ export default function AdminPage() {
           resetProductForm();
         });
     } else {
-      data.imageUrl = productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`;
-      data.createdAt = serverTimestamp();
-      addDoc(collection(db, "products"), data)
+      addDoc(collection(db, "products"), { ...data, createdAt: serverTimestamp() })
         .then(() => {
           toast({ title: "Product Live!" });
           resetProductForm();
@@ -315,14 +312,14 @@ export default function AdminPage() {
   const handleEditProduct = (p: any) => {
     setEditingProductId(p.id);
     setProductForm({
-      name: p.name,
-      mrp: p.mrp.toString(),
-      price: p.price.toString(),
-      unit: p.unit || "",
-      category: p.category,
-      description: p.description || "",
-      imageData: p.imageUrl,
-      isTopRated: p.isTopRated || false
+      name: p.name ?? "",
+      mrp: p.mrp?.toString() ?? "",
+      price: p.price?.toString() ?? "",
+      unit: p.unit ?? "",
+      category: p.category ?? "",
+      description: p.description ?? "",
+      imageData: p.imageUrl ?? "",
+      isTopRated: p.isTopRated ?? false
     });
     setIsProductSheetOpen(true);
   };
@@ -358,8 +355,8 @@ export default function AdminPage() {
   const handleEditCategory = (cat: any) => {
     setEditingCategoryId(cat.id);
     setCategoryForm({
-      name: cat.name,
-      imageData: cat.imageUrl
+      name: cat.name ?? "",
+      imageData: cat.imageUrl ?? ""
     });
     setIsCategorySheetOpen(true);
   };
@@ -409,9 +406,9 @@ export default function AdminPage() {
   const handleEditCoupon = (c: any) => {
     setEditingCouponId(c.id);
     setCouponForm({
-      code: c.code,
-      value: c.value.toString(),
-      type: c.discountType
+      code: c.code ?? "",
+      value: c.value?.toString() ?? "",
+      type: c.discountType ?? "fixed"
     });
     setIsCouponSheetOpen(true);
   };
@@ -422,7 +419,7 @@ export default function AdminPage() {
       return;
     }
     const formattedPoints = zonePoints.map(p => ({ lat: p[0], lng: p[1] }));
-    const data: any = { 
+    const data = { 
       ...zoneForm, 
       points: formattedPoints,
       updatedAt: serverTimestamp() 
@@ -445,7 +442,7 @@ export default function AdminPage() {
 
   const handleEditZone = (z: any) => {
     setEditingZoneId(z.id);
-    setZoneForm({ name: z.name, pincode: z.pincode });
+    setZoneForm({ name: z.name ?? "", pincode: z.pincode ?? "" });
     if (z.points) {
       setZonePoints(z.points.map((p: any) => [p.lat, p.lng]));
     }
@@ -538,15 +535,15 @@ export default function AdminPage() {
             </Card>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
-                <div><p className="text-[10px] font-black text-gray-400 uppercase">REVENUE</p><h4 className="text-2xl font-black">₹{orders?.reduce((s, o) => s + (o.total || 0), 0) || 0}</h4></div>
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">REVENUE</p><h4 className="text-2xl font-black">₹{orders?.reduce((s, o) => s + (o.total ?? 0), 0) ?? 0}</h4></div>
                 <div className="bg-orange-50 text-orange-500 p-4 rounded-3xl"><LayoutDashboard className="w-6 h-6" /></div>
               </Card>
               <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
-                <div><p className="text-[10px] font-black text-gray-400 uppercase">ORDERS</p><h4 className="text-2xl font-black">{orders?.length || 0}</h4></div>
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">ORDERS</p><h4 className="text-2xl font-black">{orders?.length ?? 0}</h4></div>
                 <div className="bg-blue-50 text-blue-500 p-4 rounded-3xl"><ShoppingBag className="w-6 h-6" /></div>
               </Card>
               <Card className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg">
-                <div><p className="text-[10px] font-black text-gray-400 uppercase">CUSTOMERS</p><h4 className="text-2xl font-black">{customers?.length || 0}</h4></div>
+                <div><p className="text-[10px] font-black text-gray-400 uppercase">CUSTOMERS</p><h4 className="text-2xl font-black">{customers?.length ?? 0}</h4></div>
                 <div className="bg-purple-50 text-purple-500 p-4 rounded-3xl"><Users className="w-6 h-6" /></div>
               </Card>
             </div>
@@ -562,7 +559,7 @@ export default function AdminPage() {
                 <Button variant="outline" onClick={() => csvFileRef.current?.click()} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
                 <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
                   <SheetTrigger asChild>
-                    <Button onClick={() => setEditingProductId(null)} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                    <Button onClick={() => { setEditingProductId(null); resetProductForm(); setIsProductSheetOpen(true); }} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                   </SheetTrigger>
                   <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
                     <ScrollArea className="h-full px-8 py-8">
@@ -624,7 +621,7 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">CATEGORIES</h2>
               <Sheet open={isCategorySheetOpen} onOpenChange={setIsCategorySheetOpen}>
                 <SheetTrigger asChild>
-                  <Button onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: "", imageData: "" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                  <Button onClick={() => { setEditingCategoryId(null); resetCategoryForm(); setIsCategorySheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
                   <div className="p-8 max-w-xl mx-auto space-y-6">
@@ -660,7 +657,7 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">ZONES</h2>
               <Sheet open={isZoneSheetOpen} onOpenChange={setIsZoneSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button onClick={() => { resetZoneForm(); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
+                  <Button onClick={() => { resetZoneForm(); setIsZoneSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white z-[1001] p-0">
                   <ScrollArea className="h-full px-8 py-8">
@@ -745,7 +742,7 @@ export default function AdminPage() {
               <h2 className="text-2xl font-black italic uppercase">COUPONS</h2>
               <Sheet open={isCouponSheetOpen} onOpenChange={setIsCouponSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button onClick={() => { setEditingCouponId(null); setCouponForm({ code: "", value: "", type: "fixed" }); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
+                  <Button onClick={() => { setEditingCouponId(null); resetCouponForm(); setIsCouponSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
                   <div className="p-8 max-w-xl mx-auto space-y-6">
@@ -789,7 +786,7 @@ export default function AdminPage() {
                   </div>
                   <div className="space-y-2">
                     {order.items?.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between text-sm"><span className="text-gray-500">{item.name} x {item.quantity}</span><span className="font-bold">₹{item.price * item.quantity}</span></div>
+                      <div key={i} className="flex justify-between text-sm"><span className="text-gray-500">{item.name} x {item.quantity}</span><span className="font-bold">₹{(item.price ?? 0) * (item.quantity ?? 0)}</span></div>
                     ))}
                   </div>
                   <div className="pt-4 border-t flex justify-between items-center"><div className="text-[10px] font-black text-gray-400 uppercase">Total Amount</div><div className="text-xl font-black italic">₹{order.total}</div></div>

@@ -10,13 +10,14 @@ import {
 } from 'firebase/firestore';
 
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
-  const [data, setData] = useState<T[] | null>(null);
+  const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!query) {
       setLoading(false);
+      setData([]);
       return;
     }
 
@@ -29,8 +30,10 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         }));
         setData(items);
         setLoading(false);
+        setError(null);
       },
       (err) => {
+        console.error("Firestore useCollection error:", err);
         setError(err);
         setLoading(false);
       }
@@ -39,5 +42,5 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     return () => unsubscribe();
   }, [query]);
 
-  return { data, loading, error };
+  return { data: data ?? [], loading, error };
 }

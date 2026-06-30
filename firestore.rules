@@ -2,41 +2,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper to check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Publicly readable content
     match /products/{productId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
+    
     match /categories/{categoryId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
+    
     match /banners/{bannerId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
+    
     match /zones/{zoneId} {
       allow read: if true;
       allow write: if isAuthenticated();
     }
 
-    // Coupons are for authenticated users
     match /coupons/{couponId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // Orders: User can read/write their own, Admin (auth) can read all
     match /orders/{orderId} {
       allow read, write: if isAuthenticated();
     }
 
-    // Customers can read/write their own profile, and admin can see all
     match /customers/{customerId} {
       allow read, write: if isAuthenticated() && request.auth.uid == customerId;
       allow read: if isAuthenticated();
