@@ -637,7 +637,7 @@ export default function AdminPage() {
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditingCategoryId(cat.id); setCategoryForm({ name: cat.name, imageData: cat.imageUrl }); setIsCategorySheetOpen(true); }} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { deleteDoc(doc(db, "categories", parseInt(cat.id))).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `categories/${cat.id}`, operation: 'delete' })); }); }} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { deleteDoc(doc(db, "categories", cat.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `categories/${cat.id}`, operation: 'delete' })); }); }} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </Card>
               ))}
@@ -668,7 +668,7 @@ export default function AdminPage() {
                           />
                         )}
                       </div>
-                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic shadow-xl">Save Zone</Button>
+                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic shadow-xl">Save Zone</Button>
                     </div>
                   </ScrollArea>
                 </SheetContent>
@@ -729,7 +729,7 @@ export default function AdminPage() {
                         <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
                       </Select>
                     </div>
-                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">Save Coupon</Button>
+                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic">Save Coupon</Button>
                   </div>
                 </SheetContent>
               </Sheet>
