@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -57,7 +58,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// Optimized Map Component
+// Optimized Map Component Factory
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
@@ -636,7 +637,7 @@ export default function AdminPage() {
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <div className="absolute top-4 right-4 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditingCategoryId(cat.id); setCategoryForm({ name: cat.name, imageData: cat.imageUrl }); setIsCategorySheetOpen(true); }} className="bg-white/80 p-1.5 rounded-full text-primary hover:bg-white shadow-sm"><Edit3 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { deleteDoc(doc(db, "categories", cat.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `categories/${cat.id}`, operation: 'delete' })); }); }} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => { deleteDoc(doc(db, "categories", parseInt(cat.id))).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `categories/${cat.id}`, operation: 'delete' })); }); }} className="bg-white/80 p-1.5 rounded-full text-red-500 hover:bg-white shadow-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </Card>
               ))}
