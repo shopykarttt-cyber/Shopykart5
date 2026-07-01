@@ -1,19 +1,54 @@
 
 "use client";
 
-import { useState } from "react";
-import { TopBar } from "@/components/layout/top-bar";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useCart } from "@/components/cart/cart-provider";
 import { useUser, useFirestore } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { MapPin, CreditCard, ShoppingBag, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { MapPin, CreditCard, ShoppingBag, ArrowLeft, CheckCircle2, Loader2, Navigation } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+
+// Optimized Street Map for Address Picking
+const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
+  const { MapContainer, TileLayer, Marker, useMapEvents } = mod;
+  
+  function MapEvents({ onLocationSelect }: { onLocationSelect: (pos: [number, number]) => void }) {
+    useMapEvents({
+      click(e) {
+        onLocationSelect([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+    return null;
+  }
+
+  return function MapComponent({ 
+    selectedPos, 
+    onLocationSelect, 
+    center 
+  }: { 
+    selectedPos: [number, number] | null, 
+    onLocationSelect: (pos: [number, number]) => void,
+    center: [number, number]
+  }) {
+    return (
+      <MapContainer center={center} zoom={16} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
+        <TileLayer 
+          url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        <MapEvents onLocationSelect={onLocationSelect} />
+        {selectedPos && <Marker position={selectedPos} />}
+      </MapContainer>
+    );
+  };
+}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-50 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
@@ -22,11 +57,36 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  
   const [address, setAddress] = useState({
     pincode: "",
     street: "",
     landmark: "",
+    lat: 28.6139,
+    lng: 77.2090
   });
+
+  const [selectedMapPos, setSelectedMapPos] = useState<[number, number] | null>([28.6139, 77.2090]);
+
+  useEffect(() => {
+    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      });
+    }
+  }, []);
+
+  const handleLocationSelect = (pos: [number, number]) => {
+    setSelectedMapPos(pos);
+    setAddress(prev => ({ ...prev, lat: pos[0], lng: pos[1] }));
+    toast({ title: "Location Updated", description: "Delivery pin dropped successfully." });
+  };
 
   const handlePlaceOrder = async () => {
     if (!user) return;
@@ -37,7 +97,10 @@ export default function CheckoutPage() {
       customerName: user.displayName,
       items: items,
       total: total,
-      address: address,
+      address: {
+        ...address,
+        mapLocation: selectedMapPos ? { lat: selectedMapPos[0], lng: selectedMapPos[1] } : null
+      },
       status: "Processing",
       createdAt: serverTimestamp(),
     };
@@ -70,36 +133,53 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] pb-20">
-      <header className="bg-white p-6 border-b flex items-center gap-4">
+      <header className="bg-white p-6 border-b flex items-center gap-4 sticky top-0 z-50">
         <button onClick={() => step === 1 ? router.push('/') : setStep(step - 1)}>
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h1 className="text-xl font-black italic uppercase tracking-tighter">Checkout</h1>
       </header>
 
-      <main className="p-6 space-y-8">
+      <main className="p-6 space-y-8 max-w-2xl mx-auto">
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="space-y-2">
-              <h2 className="text-2xl font-black italic uppercase">Shipping</h2>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Delivery location</p>
+              <h2 className="text-2xl font-black italic uppercase">Delivery Point</h2>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Pin your location on street map</p>
             </div>
             
-            <Card className="p-6 rounded-[2.5rem] border-none shadow-xl bg-white space-y-4">
-              <div className="flex items-center gap-3 text-primary mb-2">
-                <MapPin className="w-5 h-5" />
-                <span className="font-bold uppercase tracking-widest text-[10px]">Enter Details</span>
-              </div>
-              <Input placeholder="Pincode *" value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Input placeholder="Flat/House No., Street *" value={address.street} onChange={e => setAddress({...address, street: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Input placeholder="Landmark (Optional)" value={address.landmark} onChange={e => setAddress({...address, landmark: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
+               <div className="h-[300px] w-full relative">
+                  {isClient && (
+                    <AddressMap 
+                      center={[28.6139, 77.2090]}
+                      selectedPos={selectedMapPos}
+                      onLocationSelect={handleLocationSelect}
+                    />
+                  )}
+                  <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-sm p-3 rounded-2xl flex items-center gap-2 border border-gray-100 shadow-lg pointer-events-none z-[1000]">
+                    <Navigation className="w-4 h-4 text-primary animate-pulse" />
+                    <span className="text-[10px] font-black uppercase text-gray-600">Tap on street map to set pin</span>
+                  </div>
+               </div>
+               <div className="p-6 space-y-4">
+                <div className="flex items-center gap-3 text-primary mb-2">
+                  <MapPin className="w-5 h-5" />
+                  <span className="font-bold uppercase tracking-widest text-[10px]">Enter Address Details</span>
+                </div>
+                <Input placeholder="Flat/House No., Street *" value={address.street} onChange={e => setAddress({...address, street: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input placeholder="Pincode *" value={address.pincode} onChange={e => setAddress({...address, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                  <Input placeholder="Landmark" value={address.landmark} onChange={e => setAddress({...address, landmark: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                </div>
+               </div>
             </Card>
 
             <Button 
-              onClick={() => address.pincode && address.street ? setStep(2) : toast({ title: "Required", description: "Fill required fields." })}
-              className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg"
+              onClick={() => address.pincode && address.street ? setStep(2) : toast({ title: "Required", description: "Fill address and street details." })}
+              className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl"
             >
-              Continue to Payment
+              Confirm & Pay
             </Button>
           </div>
         )}

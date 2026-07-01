@@ -20,7 +20,9 @@ import {
   Star,
   Edit3,
   MapPin,
-  Map as MapIcon
+  Map as MapIcon,
+  Save,
+  RotateCcw
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -58,7 +60,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// Optimized Map Component Factory
+// Optimized Real Street Map Component
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
@@ -81,16 +83,21 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     center: [number, number]
   }) {
     return (
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png" />
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
+        <TileLayer 
+          url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
         <MapEvents onClick={onMapClick} />
-        {points?.map((pos, i) => <Marker key={`marker-${i}`} position={pos} />)}
-        {points?.length > 1 && <Polyline positions={points} color="red" />}
-        {points?.length > 2 && <Polygon positions={points} color="green" fillColor="green" fillOpacity={0.3} />}
+        {points?.map((pos, i) => (
+          <Marker key={`marker-${i}`} position={pos} />
+        ))}
+        {points?.length > 1 && <Polyline positions={points} color="#FF6B00" weight={3} />}
+        {points?.length > 2 && <Polygon positions={points} pathOptions={{ color: '#FF6B00', fillColor: '#FF6B00', fillOpacity: 0.2 }} />}
       </MapContainer>
     );
   };
-}), { ssr: false });
+}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Street Map...</div> });
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -648,27 +655,38 @@ export default function AdminPage() {
         {view === "zones" && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black italic uppercase">ZONES</h2>
+              <h2 className="text-2xl font-black italic uppercase">DELIVERY ZONES</h2>
               <Sheet open={isZoneSheetOpen} onOpenChange={setIsZoneSheetOpen}>
                 <SheetTrigger asChild>
-                  <Button onClick={() => { resetZoneForm(); setIsZoneSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Zone</Button>
+                  <Button onClick={() => { resetZoneForm(); setIsZoneSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Create Zone</Button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white z-[1001] p-0">
                   <ScrollArea className="h-full px-8 py-8">
-                    <div className="p-8 max-w-2xl mx-auto space-y-6">
-                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">Add/Edit Zone</SheetTitle></SheetHeader>
-                      <Input placeholder="Zone Name" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <Input placeholder="Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <div className="h-[400px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
-                        {isClient && (
-                          <ZoneMap 
-                            center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
-                            points={zonePoints}
-                            onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
-                          />
-                        )}
+                    <div className="p-8 max-w-4xl mx-auto space-y-6">
+                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">Setup Coverage Zone</SheetTitle></SheetHeader>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <Input placeholder="Central Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       </div>
-                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic shadow-xl">Save Zone</Button>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between px-2">
+                          <p className="text-[10px] font-black text-gray-400 uppercase">Draw Zone on Street Map ({zonePoints.length} points)</p>
+                          <button onClick={() => setZonePoints([])} className="text-xs font-bold text-red-500 flex items-center gap-1"><RotateCcw className="w-3 h-3" /> Reset Points</button>
+                        </div>
+                        <div className="h-[450px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0 shadow-inner">
+                          {isClient && (
+                            <ZoneMap 
+                              center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
+                              points={zonePoints}
+                              onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic shadow-xl flex items-center justify-center gap-2">
+                        <Save className="w-6 h-6" /> Save Coverage Zone
+                      </Button>
                     </div>
                   </ScrollArea>
                 </SheetContent>
@@ -677,7 +695,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {zones?.map((z: any) => (
                 <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-4"><div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div><div><h4 className="font-black text-lg">{z.name}</h4><p className="text-xs text-gray-500 font-bold uppercase">{z.pincode}</p></div></div>
+                  <div className="flex items-center gap-4"><div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div><div><h4 className="font-black text-lg">{z.name}</h4><p className="text-xs text-gray-500 font-bold uppercase">{z.pincode} • {z.points?.length || 0} Points</p></div></div>
                   <button onClick={() => { deleteDoc(doc(db, "zones", z.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `zones/${z.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                 </Card>
               ))}
