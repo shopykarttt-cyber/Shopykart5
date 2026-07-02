@@ -60,7 +60,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// Optimized Real Street Map Component
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
@@ -73,7 +72,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     return null;
   }
 
-  return function MapComponent({ 
+  const MapComponent = ({ 
     points, 
     onMapClick, 
     center 
@@ -81,7 +80,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     points: [number, number][], 
     onMapClick: (pos: [number, number]) => void,
     center: [number, number]
-  }) {
+  }) => {
     return (
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
         <TileLayer 
@@ -97,6 +96,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
       </MapContainer>
     );
   };
+  return MapComponent;
 }), { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Street Map...</div> });
 
 const SALES_DATA = [

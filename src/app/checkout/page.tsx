@@ -28,7 +28,7 @@ const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
     return null;
   }
 
-  return function MapComponent({ 
+  const MapComponent = ({ 
     selectedPos, 
     onLocationSelect, 
     center 
@@ -36,7 +36,7 @@ const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
     selectedPos: [number, number] | null, 
     onLocationSelect: (pos: [number, number]) => void,
     center: [number, number]
-  }) {
+  }) => {
     return (
       <MapContainer center={center} zoom={16} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
         <TileLayer 
@@ -48,6 +48,7 @@ const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
       </MapContainer>
     );
   };
+  return MapComponent;
 }), { ssr: false, loading: () => <div className="w-full h-full bg-gray-50 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
 
 export default function CheckoutPage() {

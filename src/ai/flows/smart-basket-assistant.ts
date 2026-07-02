@@ -2,10 +2,6 @@
 'use server';
 /**
  * @fileOverview A Smart Basket Assistant that suggests optimized grocery bundles and recipes.
- *
- * - smartBasketAssistant - A function that handles the grocery suggestion process.
- * - SmartBasketAssistantInput - The input type for the smartBasketAssistant function.
- * - SmartBasketAssistantOutput - The return type for the smartBasketAssistant function.
  */
 
 import {ai} from '@/ai/genkit';
