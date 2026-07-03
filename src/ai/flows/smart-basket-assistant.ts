@@ -58,7 +58,7 @@ export async function smartBasketAssistant(
 
 const smartBasketAssistantPrompt = ai.definePrompt({
   name: 'smartBasketAssistantPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: 'gemini-1.5-flash',
   input: {schema: SmartBasketAssistantInputSchema},
   output: {schema: SmartBasketAssistantOutputSchema},
   prompt: `You are a smart grocery basket assistant. Your goal is to help users plan their meals and shopping lists by suggesting optimized grocery bundles and relevant recipes based on their search intent and seasonal trends.
