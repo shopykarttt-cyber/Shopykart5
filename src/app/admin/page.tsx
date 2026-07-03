@@ -82,7 +82,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     center: [number, number]
   }) => {
     return (
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -97,7 +97,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     );
   };
   return MapComponent;
-}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Street Map...</div> });
+}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -206,53 +206,6 @@ export default function AdminPage() {
       };
       reader.onerror = error => reject(error);
     });
-  };
-
-  const handleProductImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const optimized = await optimizeImage(file);
-      setProductForm(prev => ({ ...prev, imageData: optimized }));
-    }
-  };
-
-  const handleCsvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string;
-      const rows = text.split('\n').map(row => row.split(','));
-      const dataRows = rows.slice(1).filter(row => row.length >= 5 && row[0]?.trim() !== "");
-      let successCount = 0;
-      for (const row of dataRows) {
-        const name = row[0]?.trim();
-        const mrp = parseFloat(row[1]?.trim());
-        const price = parseFloat(row[2]?.trim());
-        const unit = row[3]?.trim();
-        const category = row[4]?.trim();
-        const description = row[5]?.trim() || "";
-        if (name && !isNaN(mrp) && !isNaN(price) && category) {
-          const productData = {
-            name, mrp, price, unit, category, description,
-            isTopRated: false,
-            imageUrl: `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
-            createdAt: serverTimestamp()
-          };
-          addDoc(collection(db, "products"), productData)
-            .catch(async () => {
-              errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: 'products',
-                operation: 'create',
-                requestResourceData: productData
-              }));
-            });
-          successCount++;
-        }
-      }
-      toast({ title: "Import Successful", description: `Added ${successCount} products.` });
-    };
-    reader.readAsText(file);
   };
 
   const handleAddProduct = () => {
@@ -555,48 +508,44 @@ export default function AdminPage() {
           <div className="space-y-6">
             <div className="flex justify-between items-center gap-2">
               <h2 className="text-2xl font-black italic uppercase">PRODUCTS</h2>
-              <div className="flex gap-2">
-                <input type="file" ref={csvFileRef} onChange={handleCsvUpload} className="hidden" accept=".csv" />
-                <Button variant="outline" onClick={() => csvFileRef.current?.click()} className="rounded-2xl border-dashed h-12 gap-2 font-bold px-4"><FileUp className="w-4 h-4" /> Bulk Import</Button>
-                <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
-                  <SheetTrigger asChild>
-                    <Button onClick={() => { setEditingProductId(null); resetProductForm(); setIsProductSheetOpen(true); }} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
-                  </SheetTrigger>
-                  <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
-                    <ScrollArea className="h-full px-8 py-8">
-                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
-                      <div className="space-y-6 pb-20 max-w-xl mx-auto">
-                        <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
-                          {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                          <input type="file" ref={productFileRef} onChange={handleProductImagePick} className="hidden" accept="image/*" />
-                        </div>
-                        <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                          <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        </div>
-                        <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
-                            {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
-                          <div className="flex items-center gap-3">
-                            <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
-                            <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
-                          </div>
-                          <Switch id="top-rated-toggle" checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
-                        </div>
-                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
-                          {editingProductId ? "Update Changes" : "Publish Live"}
-                        </Button>
+              <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
+                <SheetTrigger asChild>
+                  <Button onClick={() => { setEditingProductId(null); resetProductForm(); setIsProductSheetOpen(true); }} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
+                  <ScrollArea className="h-full px-8 py-8">
+                    <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
+                    <div className="space-y-6 pb-20 max-w-xl mx-auto">
+                      <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
+                        {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: await optimizeImage(file)})); }} className="hidden" accept="image/*" />
                       </div>
-                    </ScrollArea>
-                  </SheetContent>
-                </Sheet>
-              </div>
+                      <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      </div>
+                      <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
+                        <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
+                        <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
+                          {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                          <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
+                        </div>
+                        <Switch id="top-rated-toggle" checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
+                      </div>
+                      <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
+                        {editingProductId ? "Update Changes" : "Publish Live"}
+                      </Button>
+                    </div>
+                  </ScrollArea>
+                </SheetContent>
+              </Sheet>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products?.map((p: any) => (
@@ -629,7 +578,7 @@ export default function AdminPage() {
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
                     <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
                       {categoryForm.imageData ? <img src={categoryForm.imageData} alt="Category Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
-                      <input type="file" ref={categoryFileRef} onChange={e => { const file = e.target.files?.[0]; if (file) optimizeImage(file).then(opt => setCategoryForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
+                      <input type="file" ref={categoryFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setCategoryForm(p => ({...p, imageData: ""})); optimizeImage(e.target.files![0]).then(opt => setCategoryForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
                     </div>
                     <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                     <Button onClick={handleAddCategory} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCategoryId ? "Update Category" : "Add Category"}</Button>
@@ -668,21 +617,15 @@ export default function AdminPage() {
                         <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                         <Input placeholder="Central Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between px-2">
-                          <p className="text-[10px] font-black text-gray-400 uppercase">Draw Zone on Street Map ({zonePoints.length} points)</p>
-                          <button onClick={() => setZonePoints([])} className="text-xs font-bold text-red-500 flex items-center gap-1"><RotateCcw className="w-3 h-3" /> Reset Points</button>
-                        </div>
-                        <div className="h-[450px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0 shadow-inner">
-                          {isClient && (
-                            <ZoneMap 
-                              center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
-                              points={zonePoints}
-                              onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
-                            />
-                          )}
-                        </div>
+                      <div className="h-[450px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
+                        {isClient && (
+                          <ZoneMap 
+                            center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
+                            points={zonePoints}
+                            onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
+                          />
+                        )}
+                        <button onClick={() => setZonePoints([])} className="absolute bottom-4 right-4 z-[1000] bg-white p-3 rounded-2xl shadow-xl text-red-500 font-bold text-xs uppercase flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Reset</button>
                       </div>
                       <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic shadow-xl flex items-center justify-center gap-2">
                         <Save className="w-6 h-6" /> Save Coverage Zone
@@ -697,104 +640,6 @@ export default function AdminPage() {
                 <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
                   <div className="flex items-center gap-4"><div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div><div><h4 className="font-black text-lg">{z.name}</h4><p className="text-xs text-gray-500 font-bold uppercase">{z.pincode} • {z.points?.length || 0} Points</p></div></div>
                   <button onClick={() => { deleteDoc(doc(db, "zones", z.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `zones/${z.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "banners" && (
-           <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">HOME BANNERS</h2>
-            <Card className="p-6 rounded-[2.5rem] bg-white shadow-xl space-y-4 max-w-xl">
-              <div onClick={() => bannerFileRef.current?.click()} className="w-full h-40 rounded-3xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                {bannerForm.imageData ? <img src={bannerForm.imageData} alt="Banner Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                <input type="file" ref={bannerFileRef} onChange={e => { const file = e.target.files?.[0]; if (file) optimizeImage(file).then(opt => setBannerForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
-              </div>
-              <Input placeholder="Offer Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-              <Button onClick={handleAddBanner} className="h-14 w-full rounded-2xl bg-black font-black uppercase italic">Upload Banner</Button>
-            </Card>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {banners?.map((b: any) => (
-                <Card key={b.id} className="relative h-40 rounded-[2rem] overflow-hidden group shadow-xl">
-                  <img src={b.imageUrl} alt={b.title} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-between px-6">
-                    <span className="text-white font-black italic uppercase">{b.title}</span>
-                    <button onClick={() => { deleteDoc(doc(db, "banners", b.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `banners/${b.id}`, operation: 'delete' })); }); }} className="text-white hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "coupons" && (
-           <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black italic uppercase">COUPONS</h2>
-              <Sheet open={isCouponSheetOpen} onOpenChange={setIsCouponSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button onClick={() => { setEditingCouponId(null); resetCouponForm(); setIsCouponSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Add Coupon</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[60vh] rounded-t-[3rem] bg-white z-[1001]">
-                  <div className="p-8 max-w-xl mx-auto space-y-6">
-                    <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCouponId ? "Edit Coupon" : "Add Coupon"}</SheetTitle></SheetHeader>
-                    <Input placeholder="CODE" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                    <div className="flex gap-2">
-                      <Input type="number" placeholder="Value" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <Select value={couponForm.type} onValueChange={val => setCouponForm({...couponForm, type: val})}>
-                        <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold w-32"><SelectValue /></SelectTrigger>
-                        <SelectContent className="rounded-2xl border-none"><SelectItem value="fixed">Fixed</SelectItem><SelectItem value="percentage">%</SelectItem></SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleAddCoupon} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic">Save Coupon</Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {coupons?.map((c: any) => (
-                <Card key={c.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
-                  <div><h4 className="font-black text-lg">{c.code}</h4><p className="text-xs text-gray-500 font-bold uppercase">{c.discountType === 'fixed' ? `₹${c.value} OFF` : `${c.value}% OFF`}</p></div>
-                  <button onClick={() => { deleteDoc(doc(db, "coupons", c.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `coupons/${c.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "orders" && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">LIVE ORDERS</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {orders?.map((order: any) => (
-                <Card key={order.id} className="p-6 rounded-[2.5rem] bg-white shadow-lg space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div><h4 className="font-bold text-gray-900">Order #{order.id?.slice(0, 6)}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{formatOrderDate(order.createdAt)}</p></div>
-                    <Badge className="bg-orange-100 text-orange-600 border-none font-black uppercase tracking-widest">{order.status}</Badge>
-                  </div>
-                  <div className="space-y-2">
-                    {order.items?.map((item: any, i: number) => (
-                      <div key={i} className="flex justify-between text-sm"><span className="text-gray-500">{item.name} x {item.quantity}</span><span className="font-bold">₹{(item.price ?? 0) * (item.quantity ?? 0)}</span></div>
-                    ))}
-                  </div>
-                  <div className="pt-4 border-t flex justify-between items-center"><div className="text-[10px] font-black text-gray-400 uppercase">Total Amount</div><div className="text-xl font-black italic">₹{order.total}</div></div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {view === "customers" && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-black italic uppercase">REGISTERED USERS</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {customers?.map((customer: any) => (
-                <Card key={customer.id} className="p-6 rounded-[2.5rem] bg-white flex items-center justify-between shadow-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center"><Users className="w-6 h-6 text-primary" /></div>
-                    <div><h4 className="font-bold text-gray-900">{customer.name}</h4><p className="text-[10px] text-gray-400 font-black uppercase">{customer.email}</p></div>
-                  </div>
                 </Card>
               ))}
             </div>

@@ -62,8 +62,6 @@ const smartBasketAssistantPrompt = ai.definePrompt({
   output: {schema: SmartBasketAssistantOutputSchema},
   prompt: `You are a smart grocery basket assistant. Your goal is to help users plan their meals and shopping lists by suggesting optimized grocery bundles and relevant recipes based on their search intent and seasonal trends.
 
-Consider current seasonal trends when generating suggestions for grocery items and recipes. Aim for practical, easy-to-shop bundles and clear, concise recipes.
-
 User's search intent: {{{userSearchIntent}}}
 
 Please provide a few optimized grocery bundles and a couple of relevant recipes that can be made using items from these bundles.`,
@@ -77,8 +75,8 @@ const smartBasketAssistantFlow = ai.defineFlow(
   },
   async input => {
     let attempts = 0;
-    const maxAttempts = 3;
-    const delay = 2000;
+    const maxAttempts = 2;
+    const delay = 1000;
 
     while (attempts < maxAttempts) {
       try {
@@ -86,16 +84,10 @@ const smartBasketAssistantFlow = ai.defineFlow(
         return output!;
       } catch (error: any) {
         attempts++;
-        const isServiceUnavailable = error.message?.includes('503') || error.message?.includes('high demand') || error.message?.includes('404') || error.message?.includes('not found');
-        
-        if (attempts >= maxAttempts || !isServiceUnavailable) {
-          throw error;
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, delay * attempts));
+        if (attempts >= maxAttempts) throw error;
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
-    throw new Error('Failed to generate suggestions due to high service demand. Please try again in a moment.');
+    throw new Error('AI Service temporarily busy. Please try again.');
   }
 );
