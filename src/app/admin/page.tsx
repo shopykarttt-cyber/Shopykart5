@@ -15,7 +15,6 @@ import {
   ImageIcon,
   Ticket,
   Flag,
-  FileUp,
   ShoppingBag,
   Star,
   Edit3,
@@ -127,9 +126,7 @@ export default function AdminPage() {
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
   const productFileRef = useRef<HTMLInputElement>(null);
-  const csvFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
-  const bannerFileRef = useRef<HTMLInputElement>(null);
 
   const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
 
@@ -167,9 +164,6 @@ export default function AdminPage() {
   const ordersQuery = useMemo(() => user ? query(collection(db, "orders"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: orders } = useCollection(ordersQuery);
 
-  const bannersQuery = useMemo(() => user ? query(collection(db, "banners"), orderBy("createdAt", "desc")) : null, [db, user]);
-  const { data: banners } = useCollection(bannersQuery);
-
   const zonesQuery = useMemo(() => user ? query(collection(db, "zones"), orderBy("name", "asc")) : null, [db, user]);
   const { data: zones } = useCollection(zonesQuery);
 
@@ -178,7 +172,6 @@ export default function AdminPage() {
   });
 
   const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
-  const [bannerForm, setBannerForm] = useState({ title: "", imageData: "" });
   const [couponForm, setCouponForm] = useState({ code: "", value: "", type: "fixed" });
   const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
 
@@ -302,27 +295,6 @@ export default function AdminPage() {
     setIsCategorySheetOpen(false);
   };
 
-  const handleAddBanner = () => {
-    if (!bannerForm.imageData) return;
-    const data = { 
-      title: bannerForm.title,
-      imageUrl: bannerForm.imageData,
-      createdAt: serverTimestamp() 
-    };
-    addDoc(collection(db, "banners"), data)
-      .then(() => {
-        toast({ title: "Banner Uploaded" });
-        setBannerForm({ title: "", imageData: "" });
-      })
-      .catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: 'banners',
-          operation: 'create',
-          requestResourceData: data
-        }));
-      });
-  };
-
   const handleAddCoupon = () => {
     if (!couponForm.code || !couponForm.value) return;
     const data = {
@@ -413,15 +385,6 @@ export default function AdminPage() {
     { id: "coupons", label: "Coupons", icon: Ticket },
     { id: "customers", label: "Customers", icon: Users },
   ];
-
-  const formatOrderDate = (timestamp: any) => {
-    if (!timestamp || !isClient) return 'Recent';
-    try {
-      return new Date(timestamp.seconds * 1000).toLocaleString();
-    } catch (e) {
-      return 'Recent';
-    }
-  };
 
   if (authLoading || !user) return null;
 
@@ -518,7 +481,7 @@ export default function AdminPage() {
                     <div className="space-y-6 pb-20 max-w-xl mx-auto">
                       <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
                         {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: await optimizeImage(file)})); }} className="hidden" accept="image/*" />
+                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); optimizeImage(e.target.files![0]).then(opt => setProductForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
                       </div>
                       <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       <div className="grid grid-cols-2 gap-4">
