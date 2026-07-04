@@ -71,7 +71,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     return null;
   }
 
-  const MapComponent = ({ 
+  return function MapComponent({ 
     points, 
     onMapClick, 
     center 
@@ -79,7 +79,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     points: [number, number][], 
     onMapClick: (pos: [number, number]) => void,
     center: [number, number]
-  }) => {
+  }) {
     return (
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer 
@@ -95,8 +95,10 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
       </MapContainer>
     );
   };
-  return MapComponent;
-}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
+}), { 
+  ssr: false, 
+  loading: () => <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center font-bold text-gray-400">Loading Map...</div> 
+});
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
