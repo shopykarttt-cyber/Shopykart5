@@ -6,6 +6,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/google-genai';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
@@ -60,6 +61,7 @@ const smartBasketAssistantPrompt = ai.definePrompt({
   name: 'smartBasketAssistantPrompt',
   input: {schema: SmartBasketAssistantInputSchema},
   output: {schema: SmartBasketAssistantOutputSchema},
+  model: googleAI.model('gemini-flash-latest'),
   prompt: `You are a smart grocery basket assistant. Your goal is to help users plan their meals and shopping lists by suggesting optimized grocery bundles and relevant recipes based on their search intent and seasonal trends.
 
 User's search intent: {{{userSearchIntent}}}
