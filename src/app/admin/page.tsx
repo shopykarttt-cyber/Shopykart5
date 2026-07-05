@@ -62,6 +62,15 @@ import { Label } from "@/components/ui/label";
 const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
   
+  const Events = ({ onMapClick }: { onMapClick: (pos: [number, number]) => void }) => {
+    useMapEvents({
+      click(e) {
+        onMapClick([e.latlng.lat, e.latlng.lng]);
+      },
+    });
+    return null;
+  };
+
   return function MapComponent({ 
     points, 
     onMapClick, 
@@ -71,22 +80,13 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     onMapClick: (pos: [number, number]) => void,
     center: [number, number]
   }) {
-    function Events() {
-      useMapEvents({
-        click(e) {
-          onMapClick([e.latlng.lat, e.latlng.lng]);
-        },
-      });
-      return null;
-    }
-
     return (
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <Events />
+        <Events onMapClick={onMapClick} />
         {points?.map((pos, i) => (
           <Marker key={`marker-${i}`} position={pos} />
         ))}
