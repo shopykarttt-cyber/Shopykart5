@@ -4,8 +4,8 @@
  * @fileOverview A Smart Basket Assistant that suggests optimized grocery bundles and recipes.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
@@ -58,8 +58,8 @@ export async function smartBasketAssistant(
 
 const smartBasketAssistantPrompt = ai.definePrompt({
   name: 'smartBasketAssistantPrompt',
-  input: {schema: SmartBasketAssistantInputSchema},
-  output: {schema: SmartBasketAssistantOutputSchema},
+  input: { schema: SmartBasketAssistantInputSchema },
+  output: { schema: SmartBasketAssistantOutputSchema },
   prompt: `You are a smart grocery basket assistant. Your goal is to help users plan their meals and shopping lists by suggesting optimized grocery bundles and relevant recipes based on their search intent and seasonal trends.
 
 User's search intent: {{{userSearchIntent}}}
@@ -74,20 +74,12 @@ const smartBasketAssistantFlow = ai.defineFlow(
     outputSchema: SmartBasketAssistantOutputSchema,
   },
   async input => {
-    let attempts = 0;
-    const maxAttempts = 2;
-    const delay = 1000;
-
-    while (attempts < maxAttempts) {
-      try {
-        const {output} = await smartBasketAssistantPrompt(input);
-        return output!;
-      } catch (error: any) {
-        attempts++;
-        if (attempts >= maxAttempts) throw error;
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
+    try {
+      const { output } = await smartBasketAssistantPrompt(input);
+      return output!;
+    } catch (error: any) {
+      console.error("AI Generation Error:", error);
+      throw new Error('AI Service temporarily busy. Please try again.');
     }
-    throw new Error('AI Service temporarily busy. Please try again.');
   }
 );
