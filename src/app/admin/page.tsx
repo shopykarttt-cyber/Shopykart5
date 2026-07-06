@@ -149,9 +149,6 @@ export default function AdminPage() {
     }
   }, [user, authLoading, router]);
 
-  const customersQuery = useMemo(() => user ? query(collection(db, "customers"), orderBy("joinedAt", "desc")) : null, [db, user]);
-  const { data: customers } = useCollection(customersQuery);
-
   const productsQuery = useMemo(() => user ? query(collection(db, "products"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: products } = useCollection(productsQuery);
 
@@ -166,6 +163,9 @@ export default function AdminPage() {
 
   const zonesQuery = useMemo(() => user ? query(collection(db, "zones"), orderBy("name", "asc")) : null, [db, user]);
   const { data: zones } = useCollection(zonesQuery);
+
+  const customersQuery = useMemo(() => user ? query(collection(db, "customers"), orderBy("joinedAt", "desc")) : null, [db, user]);
+  const { data: customers } = useCollection(customersQuery);
 
   const [productForm, setProductForm] = useState({
     name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false
@@ -295,44 +295,6 @@ export default function AdminPage() {
     setIsCategorySheetOpen(false);
   };
 
-  const handleAddCoupon = () => {
-    if (!couponForm.code || !couponForm.value) return;
-    const data = {
-      code: couponForm.code.toUpperCase(),
-      value: Number(couponForm.value),
-      discountType: couponForm.type,
-      updatedAt: serverTimestamp()
-    };
-    if (editingCouponId) {
-      updateDoc(doc(db, "coupons", editingCouponId), data)
-        .then(() => { toast({ title: "Coupon Updated!" }); resetCouponForm(); })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `coupons/${editingCouponId}`,
-            operation: 'update',
-            requestResourceData: data
-          }));
-        });
-    } else {
-      const newCoupon = { ...data, createdAt: serverTimestamp() };
-      addDoc(collection(db, "coupons"), newCoupon)
-        .then(() => { toast({ title: "Coupon Added!" }); resetCouponForm(); })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'coupons',
-            operation: 'create',
-            requestResourceData: newCoupon
-          }));
-        });
-    }
-  };
-
-  const resetCouponForm = () => {
-    setCouponForm({ code: "", value: "", type: "fixed" });
-    setEditingCouponId(null);
-    setIsCouponSheetOpen(false);
-  };
-
   const handleAddZone = () => {
     if (!zoneForm.name || !zoneForm.pincode || zonePoints.length < 3) {
       toast({ variant: "destructive", title: "Invalid Zone", description: "Name, Pincode and at least 3 map points required." });
@@ -381,7 +343,6 @@ export default function AdminPage() {
     { id: "products", label: "Products", icon: Package },
     { id: "categories", label: "Category", icon: Grid },
     { id: "zones", label: "Zones", icon: MapPin },
-    { id: "banners", label: "Banners", icon: Flag },
     { id: "coupons", label: "Coupons", icon: Ticket },
     { id: "customers", label: "Customers", icon: Users },
   ];
