@@ -58,44 +58,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
-  const { MapContainer, TileLayer, Marker, Polygon, Polyline, useMapEvents } = mod;
-  
-  const Events = ({ onMapClick }: { onMapClick: (pos: [number, number]) => void }) => {
-    useMapEvents({
-      click(e) {
-        onMapClick([e.latlng.lat, e.latlng.lng]);
-      },
-    });
-    return null;
-  };
-
-  const MapComponent = ({ 
-    points, 
-    onMapClick, 
-    center 
-  }: { 
-    points: [number, number][], 
-    onMapClick: (pos: [number, number]) => void,
-    center: [number, number]
-  }) => {
-    return (
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
-        <TileLayer 
-          url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
-          attribution='&copy; OpenStreetMap contributors'
-        />
-        <Events onMapClick={onMapClick} />
-        {points?.map((pos, i) => (
-          <Marker key={`marker-${i}`} position={pos} />
-        ))}
-        {points?.length > 1 && <Polyline positions={points} color="#FF6B00" weight={3} />}
-        {points?.length > 2 && <Polygon positions={points} pathOptions={{ color: '#FF6B00', fillColor: '#FF6B00', fillOpacity: 0.2 }} />}
-      </MapContainer>
-    );
-  };
-  return MapComponent;
-}), { ssr: false, loading: () => <div className="h-full w-full bg-gray-100 flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
+const ZoneMap = dynamic(() => import('@/components/admin/ZoneMap'), { 
+  ssr: false, 
+  loading: () => <div className="h-full w-full bg-gray-100 flex items-center justify-center font-bold text-gray-400">Loading Map...</div> 
+});
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -130,15 +96,6 @@ export default function AdminPage() {
 
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') {
-      const L = require('leaflet');
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      });
-    }
   }, []);
 
   useEffect(() => {

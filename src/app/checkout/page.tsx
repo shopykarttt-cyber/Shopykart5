@@ -15,40 +15,10 @@ import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
-  const { MapContainer, TileLayer, Marker, useMapEvents } = mod;
-  
-  function MapEvents({ onLocationSelect }: { onLocationSelect: (pos: [number, number]) => void }) {
-    useMapEvents({
-      click(e) {
-        onLocationSelect([e.latlng.lat, e.latlng.lng]);
-      },
-    });
-    return null;
-  }
-
-  const MapComponent = ({ 
-    selectedPos, 
-    onLocationSelect, 
-    center 
-  }: { 
-    selectedPos: [number, number] | null, 
-    onLocationSelect: (pos: [number, number]) => void,
-    center: [number, number]
-  }) => {
-    return (
-      <MapContainer center={center} zoom={16} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
-        <TileLayer 
-          url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
-          attribution='&copy; OpenStreetMap contributors'
-        />
-        <MapEvents onLocationSelect={onLocationSelect} />
-        {selectedPos && <Marker position={selectedPos} />}
-      </MapContainer>
-    );
-  };
-  return MapComponent;
-}), { ssr: false, loading: () => <div className="w-full h-full bg-gray-50 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
+const AddressMap = dynamic(() => import('@/components/checkout/AddressMap'), { 
+  ssr: false, 
+  loading: () => <div className="w-full h-full bg-gray-50 animate-pulse rounded-3xl flex items-center justify-center font-bold text-gray-400">Loading Map...</div> 
+});
 
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
@@ -71,15 +41,6 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     setIsClient(true);
-    if (typeof window !== 'undefined') {
-      const L = require('leaflet');
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      });
-    }
   }, []);
 
   const handleLocationSelect = (pos: [number, number]) => {
