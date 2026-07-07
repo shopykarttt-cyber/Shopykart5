@@ -15,7 +15,6 @@ import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
-// Optimized Street Map for Address Picking
 const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
   const { MapContainer, TileLayer, Marker, useMapEvents } = mod;
   
@@ -41,7 +40,7 @@ const AddressMap = dynamic(() => import('react-leaflet').then((mod) => {
       <MapContainer center={center} zoom={16} style={{ height: '100%', width: '100%', borderRadius: '1.5rem' }}>
         <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution='&copy; OpenStreetMap contributors'
         />
         <MapEvents onLocationSelect={onLocationSelect} />
         {selectedPos && <Marker position={selectedPos} />}

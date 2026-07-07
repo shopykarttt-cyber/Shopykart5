@@ -14,7 +14,6 @@ import {
   Grid,
   ImageIcon,
   Ticket,
-  Flag,
   ShoppingBag,
   Star,
   Edit3,
@@ -84,7 +83,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
         <TileLayer 
           url="https://{s}.tile.openstreetmap.org/{x}/{y}/{z}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          attribution='&copy; OpenStreetMap contributors'
         />
         <Events onMapClick={onMapClick} />
         {points?.map((pos, i) => (
@@ -96,7 +95,7 @@ const ZoneMap = dynamic(() => import('react-leaflet').then((mod) => {
     );
   };
   return MapComponent;
-}), { ssr: false });
+}), { ssr: false, loading: () => <div className="h-full w-full bg-gray-100 flex items-center justify-center font-bold text-gray-400">Loading Map...</div> });
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -122,7 +121,6 @@ export default function AdminPage() {
   
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingCouponId, setEditingCouponId] = useState<string | null>(null);
   const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
   const productFileRef = useRef<HTMLInputElement>(null);
@@ -155,9 +153,6 @@ export default function AdminPage() {
   const categoriesQuery = useMemo(() => user ? query(collection(db, "categories"), orderBy("name", "asc")) : null, [db, user]);
   const { data: categories } = useCollection(categoriesQuery);
 
-  const couponsQuery = useMemo(() => user ? query(collection(db, "coupons"), orderBy("code", "asc")) : null, [db, user]);
-  const { data: coupons } = useCollection(couponsQuery);
-
   const ordersQuery = useMemo(() => user ? query(collection(db, "orders"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: orders } = useCollection(ordersQuery);
 
@@ -172,7 +167,6 @@ export default function AdminPage() {
   });
 
   const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
-  const [couponForm, setCouponForm] = useState({ code: "", value: "", type: "fixed" });
   const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
 
   const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
