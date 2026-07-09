@@ -81,7 +81,6 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const [isCouponSheetOpen, setIsCouponSheetOpen] = useState(false);
   const [isZoneSheetOpen, setIsZoneSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
