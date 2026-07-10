@@ -6,7 +6,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
@@ -75,12 +74,10 @@ const smartBasketAssistantFlow = ai.defineFlow(
     outputSchema: SmartBasketAssistantOutputSchema,
   },
   async input => {
-    try {
-      const { output } = await smartBasketAssistantPrompt(input);
-      return output!;
-    } catch (error: any) {
-      console.error("AI Generation Error:", error);
-      throw new Error('AI Service temporarily busy. Please try again.');
+    const { output } = await smartBasketAssistantPrompt(input);
+    if (!output) {
+      throw new Error('AI Service failed to generate output. Please try again.');
     }
+    return output;
   }
 );
