@@ -6,6 +6,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { googleAI } from '@genkit-ai/google-genai';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
@@ -50,12 +51,6 @@ export type SmartBasketAssistantOutput = z.infer<
   typeof SmartBasketAssistantOutputSchema
 >;
 
-export async function smartBasketAssistant(
-  input: SmartBasketAssistantInput
-): Promise<SmartBasketAssistantOutput> {
-  return smartBasketAssistantFlow(input);
-}
-
 const smartBasketAssistantPrompt = ai.definePrompt({
   name: 'smartBasketAssistantPrompt',
   input: { schema: SmartBasketAssistantInputSchema },
@@ -67,7 +62,7 @@ User's search intent: {{{userSearchIntent}}}
 Please provide a few optimized grocery bundles and a couple of relevant recipes that can be made using items from these bundles.`,
 });
 
-const smartBasketAssistantFlow = ai.defineFlow(
+export const smartBasketAssistantFlow = ai.defineFlow(
   {
     name: 'smartBasketAssistantFlow',
     inputSchema: SmartBasketAssistantInputSchema,
@@ -81,3 +76,9 @@ const smartBasketAssistantFlow = ai.defineFlow(
     return output;
   }
 );
+
+export async function smartBasketAssistant(
+  input: SmartBasketAssistantInput
+): Promise<SmartBasketAssistantOutput> {
+  return smartBasketAssistantFlow(input);
+}

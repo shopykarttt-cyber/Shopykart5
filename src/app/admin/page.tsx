@@ -54,7 +54,6 @@ import {
   Cell
 } from "recharts";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
@@ -72,6 +71,32 @@ const SALES_DATA = [
   { day: "Fri", sales: 3800 },
   { day: "Sat", sales: 500 },
 ];
+
+const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = (maxWidth / width) * height;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+    };
+    reader.onerror = error => reject(error);
+  });
+};
 
 export default function AdminPage() {
   const router = useRouter();
@@ -124,32 +149,6 @@ export default function AdminPage() {
 
   const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
   const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
-
-  const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          if (width > maxWidth) {
-            height = (maxWidth / width) * height;
-            width = maxWidth;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
 
   const handleAddProduct = () => {
     if (!productForm.name || !productForm.mrp || !productForm.price || !productForm.category) {
