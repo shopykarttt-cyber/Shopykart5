@@ -391,7 +391,7 @@ export default function AdminPage() {
                     <div className="space-y-6 pb-20 max-w-xl mx-auto">
                       <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
                         {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); optimizeImage(e.target.files![0]).then(opt => setProductForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
+                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); const opt = await optimizeImage(e.target.files![0]); setProductForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
                       </div>
                       <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       <div className="grid grid-cols-2 gap-4">
@@ -451,7 +451,7 @@ export default function AdminPage() {
                     <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">{editingCategoryId ? "Edit Category" : "Add Category"}</SheetTitle></SheetHeader>
                     <div onClick={() => categoryFileRef.current?.click()} className="w-full h-32 rounded-2xl bg-gray-50 border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
                       {categoryForm.imageData ? <img src={categoryForm.imageData} alt="Category Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-8 h-8 text-gray-300" />}
-                      <input type="file" ref={categoryFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setCategoryForm(p => ({...p, imageData: ""})); optimizeImage(e.target.files![0]).then(opt => setCategoryForm(p => ({...p, imageData: opt}))); }} className="hidden" accept="image/*" />
+                      <input type="file" ref={categoryFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setCategoryForm(p => ({...p, imageData: ""})); const opt = await optimizeImage(e.target.files![0]); setCategoryForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
                     </div>
                     <Input placeholder="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                     <Button onClick={handleAddCategory} className="h-16 w-full rounded-2xl bg-black font-black uppercase italic">{editingCategoryId ? "Update Category" : "Add Category"}</Button>
