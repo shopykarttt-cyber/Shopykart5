@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Smart Basket Assistant that suggests optimized grocery bundles and recipes.
@@ -6,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
 
 const SmartBasketAssistantInputSchema = z.object({
   userSearchIntent: z
