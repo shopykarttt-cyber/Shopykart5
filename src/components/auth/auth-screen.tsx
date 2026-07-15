@@ -5,7 +5,8 @@ import { useState } from "react";
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase";
@@ -78,10 +79,32 @@ export function AuthScreen() {
     }
   };
 
-  const handleForgotPassword = () => {
-    const adminPhone = "7992090977";
-    const message = encodeURIComponent("Hello, I forgot my Grosify password. Please help me reset it. My email is: " + (email || "[Enter Email]"));
-    window.open(`https://wa.me/91${adminPhone}?text=${message}`, "_blank");
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({ 
+        variant: "destructive", 
+        title: "Email Required", 
+        description: "Please enter your email address to reset your password." 
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({ 
+        title: "Reset Email Sent", 
+        description: "Please check your inbox (including spam) for password reset instructions." 
+      });
+    } catch (error: any) {
+      toast({ 
+        variant: "destructive", 
+        title: "Reset Failed", 
+        description: error.message 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
