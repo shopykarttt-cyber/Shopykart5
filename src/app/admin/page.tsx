@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -19,7 +20,8 @@ import {
   MapPin,
   Map as MapIcon,
   Save,
-  RotateCcw
+  RotateCcw,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -143,11 +145,33 @@ export default function AdminPage() {
   const { data: customers } = useCollection(customersQuery);
 
   const [productForm, setProductForm] = useState({
-    name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false
+    name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false,
+    pricingTiers: [] as { minQty: number; maxQty: number | null; price: number }[]
   });
 
   const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
   const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
+
+  const addPricingTier = () => {
+    setProductForm(p => ({
+      ...p,
+      pricingTiers: [...p.pricingTiers, { minQty: 1, maxQty: null, price: 0 }]
+    }));
+  };
+
+  const removePricingTier = (index: number) => {
+    setProductForm(p => ({
+      ...p,
+      pricingTiers: p.pricingTiers.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updatePricingTier = (index: number, field: string, value: any) => {
+    setProductForm(p => ({
+      ...p,
+      pricingTiers: p.pricingTiers.map((tier, i) => i === index ? { ...tier, [field]: value } : tier)
+    }));
+  };
 
   const handleAddProduct = () => {
     if (!productForm.name || !productForm.mrp || !productForm.price || !productForm.category) {
@@ -158,6 +182,12 @@ export default function AdminPage() {
       ...productForm,
       mrp: Number(productForm.mrp),
       price: Number(productForm.price),
+      pricingTiers: productForm.pricingTiers.map(t => ({
+        ...t,
+        minQty: Number(t.minQty),
+        maxQty: t.maxQty ? Number(t.maxQty) : null,
+        price: Number(t.price)
+      })),
       imageUrl: productForm.imageData || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
       updatedAt: serverTimestamp()
     };
@@ -186,7 +216,7 @@ export default function AdminPage() {
   };
 
   const resetProductForm = () => {
-    setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false });
+    setProductForm({ name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false, pricingTiers: [] });
     setEditingProductId(null);
     setIsProductSheetOpen(false);
   };
@@ -201,7 +231,8 @@ export default function AdminPage() {
       category: p.category ?? "",
       description: p.description ?? "",
       imageData: p.imageUrl ?? "",
-      isTopRated: p.isTopRated ?? false
+      isTopRated: p.isTopRated ?? false,
+      pricingTiers: p.pricingTiers ?? []
     });
     setIsProductSheetOpen(true);
   };
@@ -387,7 +418,7 @@ export default function AdminPage() {
                 <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
                   <ScrollArea className="h-full px-8 py-8">
                     <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
-                    <div className="space-y-6 pb-20 max-w-xl mx-auto">
+                    <div className="space-y-6 pb-20 max-w-2xl mx-auto">
                       <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
                         {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                         <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); const opt = await optimizeImage(e.target.files![0]); setProductForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
@@ -395,7 +426,7 @@ export default function AdminPage() {
                       <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       <div className="grid grid-cols-2 gap-4">
                         <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <Input type="number" placeholder="Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <Input type="number" placeholder="Default Sale Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       </div>
                       <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
                         <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
@@ -404,6 +435,32 @@ export default function AdminPage() {
                         </SelectContent>
                       </Select>
                       <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                      
+                      {/* Pricing Tiers Section */}
+                      <div className="space-y-4 bg-gray-50 p-6 rounded-[2rem]">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-black italic uppercase text-sm">Quantity Pricing Tiers</h4>
+                          <Button variant="ghost" size="sm" onClick={addPricingTier} className="text-primary font-bold"><Plus className="w-4 h-4 mr-1" /> Add Tier</Button>
+                        </div>
+                        {productForm.pricingTiers.map((tier, idx) => (
+                          <div key={idx} className="flex gap-2 items-end bg-white p-4 rounded-2xl shadow-sm">
+                            <div className="flex-1 space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-gray-400">Min Qty</label>
+                              <Input type="number" value={tier.minQty} onChange={e => updatePricingTier(idx, 'minQty', e.target.value)} className="h-10 rounded-xl" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-gray-400">Max Qty</label>
+                              <Input type="number" placeholder="Leave empty for +" value={tier.maxQty || ""} onChange={e => updatePricingTier(idx, 'maxQty', e.target.value || null)} className="h-10 rounded-xl" />
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <label className="text-[10px] font-bold uppercase text-gray-400">Price (₹)</label>
+                              <Input type="number" value={tier.price} onChange={e => updatePricingTier(idx, 'price', e.target.value)} className="h-10 rounded-xl" />
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => removePricingTier(idx)} className="text-red-500 mb-1"><X className="w-4 h-4" /></Button>
+                          </div>
+                        ))}
+                      </div>
+
                       <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
                         <div className="flex items-center gap-3">
                           <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />

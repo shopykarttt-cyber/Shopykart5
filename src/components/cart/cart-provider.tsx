@@ -7,9 +7,11 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  mrp: number;
   quantity: number;
   imageUrl: string;
   unit: string;
+  pricingTiers?: { minQty: number; maxQty: number | null; price: number }[];
 }
 
 interface CartContextType {
@@ -67,7 +69,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => setItems([]);
 
-  const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  // Calculate dynamic price based on tiers
+  const getItemPrice = (item: CartItem) => {
+    if (!item.pricingTiers || item.pricingTiers.length === 0) return item.price;
+    
+    // Sort tiers descending to find the highest threshold met
+    const sortedTiers = [...item.pricingTiers].sort((a, b) => b.minQty - a.minQty);
+    const matchedTier = sortedTiers.find(tier => item.quantity >= tier.minQty);
+    
+    return matchedTier ? matchedTier.price : item.price;
+  };
+
+  const total = items.reduce((sum, item) => sum + (getItemPrice(item) * item.quantity), 0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total }}>

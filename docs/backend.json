@@ -8,12 +8,23 @@
       "properties": {
         "name": { "type": "string" },
         "mrp": { "type": "number", "description": "Market Retail Price" },
-        "price": { "type": "number", "description": "Discounted Sale Price" },
+        "price": { "type": "number", "description": "Default Sale Price" },
         "unit": { "type": "string" },
         "category": { "type": "string" },
         "description": { "type": "string" },
         "imageUrl": { "type": "string" },
         "isTopRated": { "type": "boolean", "default": false },
+        "pricingTiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "minQty": { "type": "number" },
+              "maxQty": { "type": "number" },
+              "price": { "type": "number" }
+            }
+          }
+        },
         "mfgDate": { "type": "string", "format": "date" },
         "expiryDate": { "type": "string", "format": "date" },
         "stock": { "type": "number" },
