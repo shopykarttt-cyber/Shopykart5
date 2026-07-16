@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Plus, Minus, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useCart } from "@/components/cart/cart-provider";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -44,15 +45,17 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, pricingTiers 
 
   // Find effective price based on quantity and tiers
   const getEffectivePrice = (qty: number) => {
+    const checkQty = Math.max(1, qty);
     if (!pricingTiers || pricingTiers.length === 0) return price;
     const sortedTiers = [...pricingTiers].sort((a, b) => b.minQty - a.minQty);
-    const matchedTier = sortedTiers.find(tier => qty >= tier.minQty);
+    const matchedTier = sortedTiers.find(tier => checkQty >= tier.minQty);
     return matchedTier ? matchedTier.price : price;
   };
 
   const currentPrice = getEffectivePrice(quantity > 0 ? quantity : tempQty);
 
   const handleAddToCart = () => {
+    const finalQty = Math.max(1, tempQty);
     addItem({
       id,
       name,
@@ -60,19 +63,19 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, pricingTiers 
       mrp,
       unit,
       imageUrl: imageId,
-      quantity: tempQty,
+      quantity: finalQty,
       pricingTiers
     });
     setShowQtySheet(false);
     toast({
       title: "Added to Basket",
-      description: `${tempQty} ${unit} of ${name} added.`,
+      description: `${finalQty} ${unit} of ${name} added.`,
       duration: 2000
     });
   };
 
   const calculateMargin = (tierPrice: number) => {
-    if (!mrp) return 0;
+    if (!mrp) return "0";
     return (((mrp - tierPrice) / mrp) * 100).toFixed(2);
   };
 
@@ -221,8 +224,22 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, pricingTiers 
                       <Plus className="w-8 h-8 stroke-[3px]" />
                     </button>
                   </div>
+                  
+                  {/* Manual Quantity Entry */}
+                  <div className="w-24 mt-2">
+                    <Input 
+                      type="number"
+                      value={tempQty || ""}
+                      onChange={(e) => setTempQty(parseInt(e.target.value) || 0)}
+                      onBlur={() => setTempQty(prev => Math.max(1, prev))}
+                      className="h-10 text-center font-black rounded-xl bg-gray-50 border-none focus-visible:ring-primary text-base"
+                      placeholder="Qty"
+                    />
+                    <p className="text-[8px] font-black text-gray-300 uppercase text-center mt-1">Manual Entry</p>
+                  </div>
+
                   <p className="text-3xl font-black text-primary italic mt-4">
-                    ₹{getEffectivePrice(tempQty) * tempQty}
+                    ₹{getEffectivePrice(tempQty) * (tempQty || 0)}
                   </p>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
                     ₹{getEffectivePrice(tempQty)} per {unit}
@@ -259,6 +276,7 @@ export function ProductCard({ id, name, price, mrp, unit, imageId, pricingTiers 
             <div className="p-8 pt-0">
               <Button 
                 onClick={handleAddToCart}
+                disabled={tempQty < 1}
                 className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl mb-4"
               >
                 Add to Basket
