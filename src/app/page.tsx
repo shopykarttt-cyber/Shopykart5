@@ -133,7 +133,7 @@ export default function Home() {
             {selectedCategory === "For you" ? "All Products" : selectedCategory}
           </h2>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {filteredProducts && filteredProducts.length > 0 ? (
               filteredProducts.map((product: any) => (
                 <ProductCard 
