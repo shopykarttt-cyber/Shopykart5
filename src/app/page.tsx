@@ -145,6 +145,7 @@ export default function Home() {
                   unit={product.unit}
                   category={product.category}
                   imageId={product.imageUrl}
+                  pricingTiers={product.pricingTiers}
                 />
               ))
             ) : (
