@@ -18,17 +18,20 @@ import {
   Save,
   Settings as SettingsIcon,
   Loader2,
-  X
+  X,
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc, writeBatch } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import * as XLSX from "xlsx";
 import {
   Sheet,
   SheetContent,
@@ -105,6 +108,7 @@ export default function AdminPage() {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   const productFileRef = useRef<HTMLInputElement>(null);
+  const bulkFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
 
   // Settings state
@@ -112,6 +116,7 @@ export default function AdminPage() {
   const { data: settingsData } = useDoc(settingsRef);
   const [taxCharges, setTaxCharges] = useState<{ label: string; amount: number }[]>([]);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (settingsData?.taxCharges) {
@@ -231,6 +236,86 @@ export default function AdminPage() {
       pricingTiers: p.pricingTiers ?? []
     });
     setIsProductSheetOpen(true);
+  };
+
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const binaryString = event.target?.result;
+        const workbook = XLSX.read(binaryString, { type: "binary" });
+        const sheetName = workbook.SheetNames[0];
+        const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        if (data.length === 0) {
+          toast({ variant: "destructive", title: "Empty File", description: "The uploaded file contains no data." });
+          setIsUploading(false);
+          return;
+        }
+
+        const batch = writeBatch(db);
+        const productsCol = collection(db, "products");
+
+        data.forEach((row: any) => {
+          const docRef = doc(productsCol);
+          batch.set(docRef, {
+            name: row.name || "Unnamed Product",
+            mrp: Number(row.mrp) || 0,
+            price: Number(row.price) || 0,
+            unit: row.unit || "unit",
+            category: row.category || "General",
+            description: row.description || "",
+            imageUrl: row.imageUrl || `https://picsum.photos/seed/${Math.floor(Math.random() * 1000)}/400/400`,
+            isTopRated: String(row.isTopRated).toLowerCase() === 'true',
+            pricingTiers: [],
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        });
+
+        await batch.commit();
+        toast({ title: "Bulk Upload Success!", description: `${data.length} products added successfully.` });
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Upload Failed", description: err.message });
+      } finally {
+        setIsUploading(false);
+        if (bulkFileRef.current) bulkFileRef.current.value = "";
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const downloadSampleTemplate = () => {
+    const sampleData = [
+      {
+        name: "Fresh Tomatoes",
+        category: "Vegetables",
+        mrp: 100,
+        price: 80,
+        unit: "1 kg",
+        description: "Juicy organic tomatoes",
+        imageUrl: "https://picsum.photos/seed/tomato/400/400",
+        isTopRated: "TRUE"
+      },
+      {
+        name: "Amul Milk",
+        category: "Dairy",
+        mrp: 60,
+        price: 58,
+        unit: "1 L",
+        description: "Fresh toned milk",
+        imageUrl: "https://picsum.photos/seed/milk/400/400",
+        isTopRated: "FALSE"
+      }
+    ];
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+    XLSX.writeFile(wb, "Grosify_Bulk_Upload_Template.xlsx");
   };
 
   const handleAddCategory = () => {
@@ -386,71 +471,83 @@ export default function AdminPage() {
 
         {view === "products" && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-black italic uppercase">PRODUCTS</h2>
-              <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button onClick={() => { setEditingProductId(null); resetProductForm(); setIsProductSheetOpen(true); }} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
-                  <ScrollArea className="h-full px-8 py-8">
-                    <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
-                    <div className="space-y-6 pb-20 max-w-2xl mx-auto">
-                      <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
-                        {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
-                        <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); const opt = await optimizeImage(e.target.files![0]); setProductForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
-                      </div>
-                      <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <Input type="number" placeholder="Default Sale Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      </div>
-                      <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
-                        <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
-                        <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
-                          {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      
-                      <div className="space-y-4 bg-gray-50 p-6 rounded-[2rem]">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-black italic uppercase text-sm">Quantity Pricing Tiers</h4>
-                          <Button variant="ghost" size="sm" onClick={addPricingTier} className="text-primary font-bold"><Plus className="w-4 h-4 mr-1" /> Add Tier</Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" onClick={downloadSampleTemplate} className="rounded-2xl h-12 gap-2 px-6 border-2 border-gray-100 font-bold hover:bg-gray-50">
+                  <Download className="w-4 h-4" /> Template
+                </Button>
+                <div className="relative">
+                  <input type="file" ref={bulkFileRef} onChange={handleBulkUpload} className="hidden" accept=".xlsx, .xls" />
+                  <Button disabled={isUploading} onClick={() => bulkFileRef.current?.click()} className="rounded-2xl bg-white border-2 border-primary text-primary hover:bg-primary/5 h-12 gap-2 px-6 shadow-sm">
+                    {isUploading ? <Loader2 className="animate-spin w-4 h-4" /> : <FileSpreadsheet className="w-4 h-4" />} 
+                    Bulk XL Upload
+                  </Button>
+                </div>
+                <Sheet open={isProductSheetOpen} onOpenChange={setIsProductSheetOpen}>
+                  <SheetTrigger asChild>
+                    <Button onClick={() => { setEditingProductId(null); resetProductForm(); setIsProductSheetOpen(true); }} className="rounded-2xl bg-black text-white px-6 h-12 gap-2 shadow-lg"><Plus className="w-5 h-5" /> Add New</Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
+                    <ScrollArea className="h-full px-8 py-8">
+                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
+                      <div className="space-y-6 pb-20 max-w-2xl mx-auto">
+                        <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
+                          {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
+                          <input type="file" ref={productFileRef} onChange={async (e) => { const file = e.target.files?.[0]; if (file) setProductForm(p => ({...p, imageData: ""})); const opt = await optimizeImage(e.target.files![0]); setProductForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
                         </div>
-                        {productForm.pricingTiers.map((tier, idx) => (
-                          <div key={idx} className="flex gap-2 items-end bg-white p-4 rounded-2xl shadow-sm">
-                            <div className="flex-1 space-y-1">
-                              <label className="text-[10px] font-bold uppercase text-gray-400">Min Qty</label>
-                              <Input type="number" value={tier.minQty} onChange={e => updatePricingTier(idx, 'minQty', e.target.value)} className="h-10 rounded-xl" />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <label className="text-[10px] font-bold uppercase text-gray-400">Max Qty</label>
-                              <Input type="number" placeholder="Leave empty for +" value={tier.maxQty || ""} onChange={e => updatePricingTier(idx, 'maxQty', e.target.value || null)} className="h-10 rounded-xl" />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <label className="text-[10px] font-bold uppercase text-gray-400">Price (₹)</label>
-                              <Input type="number" value={tier.price} onChange={e => updatePricingTier(idx, 'price', e.target.value)} className="h-10 rounded-xl" />
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => removePricingTier(idx)} className="text-red-500 mb-1"><X className="w-4 h-4" /></Button>
+                        <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          <Input type="number" placeholder="Default Sale Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        </div>
+                        <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
+                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
+                          <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
+                            {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        
+                        <div className="space-y-4 bg-gray-50 p-6 rounded-[2rem]">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-black italic uppercase text-sm">Quantity Pricing Tiers</h4>
+                            <Button variant="ghost" size="sm" onClick={addPricingTier} className="text-primary font-bold"><Plus className="w-4 h-4 mr-1" /> Add Tier</Button>
                           </div>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
-                        <div className="flex items-center gap-3">
-                          <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
-                          <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
+                          {productForm.pricingTiers.map((tier, idx) => (
+                            <div key={idx} className="flex gap-2 items-end bg-white p-4 rounded-2xl shadow-sm">
+                              <div className="flex-1 space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-gray-400">Min Qty</label>
+                                <Input type="number" value={tier.minQty} onChange={e => updatePricingTier(idx, 'minQty', e.target.value)} className="h-10 rounded-xl" />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-gray-400">Max Qty</label>
+                                <Input type="number" placeholder="Leave empty for +" value={tier.maxQty || ""} onChange={e => updatePricingTier(idx, 'maxQty', e.target.value || null)} className="h-10 rounded-xl" />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <label className="text-[10px] font-bold uppercase text-gray-400">Price (₹)</label>
+                                <Input type="number" value={tier.price} onChange={e => updatePricingTier(idx, 'price', e.target.value)} className="h-10 rounded-xl" />
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => removePricingTier(idx)} className="text-red-500 mb-1"><X className="w-4 h-4" /></Button>
+                            </div>
+                          ))}
                         </div>
-                        <Switch id="top-rated-toggle" checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
+
+                        <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3">
+                            <Star className={`w-5 h-5 ${productForm.isTopRated ? 'text-yellow-500 fill-current' : 'text-gray-300'}`} />
+                            <Label className="font-bold cursor-pointer" htmlFor="top-rated-toggle">Top Rated Product</Label>
+                          </div>
+                          <Switch id="top-rated-toggle" checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
+                        </div>
+                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
+                          {editingProductId ? "Update Changes" : "Publish Live"}
+                        </Button>
                       </div>
-                      <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
-                        {editingProductId ? "Update Changes" : "Publish Live"}
-                      </Button>
-                    </div>
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
+                    </ScrollArea>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products?.map((p: any) => (
