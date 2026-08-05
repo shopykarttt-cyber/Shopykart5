@@ -65,7 +65,7 @@
         "items": { "type": "array" },
         "total": { "type": "number" },
         "status": { "type": "string", "enum": ["Processing", "Shipped", "Delivered", "Cancelled"] },
-        "address": { "type": "object" },
+        "address": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -89,6 +89,7 @@
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "phone": { "type": "string" },
+        "address": { "type": "string" },
         "totalOrders": { "type": "number" },
         "totalSpent": { "type": "number" },
         "joinedAt": { "type": "string", "format": "date" }
@@ -115,6 +116,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "pincode"]
+    },
+    "AppSettings": {
+      "title": "AppSettings",
+      "description": "Global application configuration",
+      "type": "object",
+      "properties": {
+        "taxCharges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": { "type": "string" },
+              "amount": { "type": "number" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -148,6 +167,10 @@
     "/zones/{zoneId}": {
       "schema": "Zone",
       "description": "Store for delivery zones"
+    },
+    "/settings/{settingId}": {
+      "schema": "AppSettings",
+      "description": "Global settings like tax and fees"
     }
   }
 }

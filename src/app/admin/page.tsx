@@ -21,14 +21,16 @@ import {
   Map as MapIcon,
   Save,
   RotateCcw,
-  X
+  X,
+  Settings as SettingsIcon,
+  Loader2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -118,6 +120,18 @@ export default function AdminPage() {
   const categoryFileRef = useRef<HTMLInputElement>(null);
 
   const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
+
+  // Settings state
+  const settingsRef = useMemo(() => doc(db, "settings", "global"), [db]);
+  const { data: settingsData } = useDoc(settingsRef);
+  const [taxCharges, setTaxCharges] = useState<{ label: string; amount: number }[]>([]);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  useEffect(() => {
+    if (settingsData?.taxCharges) {
+      setTaxCharges(settingsData.taxCharges);
+    }
+  }, [settingsData]);
 
   useEffect(() => {
     setIsClient(true);
@@ -316,14 +330,38 @@ export default function AdminPage() {
     setIsZoneSheetOpen(false);
   };
 
+  const handleSaveSettings = () => {
+    setSavingSettings(true);
+    const data = { taxCharges, updatedAt: serverTimestamp() };
+    setDoc(settingsRef, data, { merge: true })
+      .then(() => {
+        toast({ title: "Settings Saved!" });
+        setSavingSettings(false);
+      })
+      .catch(async () => {
+        setSavingSettings(false);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'settings/global',
+          operation: 'write',
+          requestResourceData: data
+        }));
+      });
+  };
+
+  const addTaxCharge = () => setTaxCharges([...taxCharges, { label: "", amount: 0 }]);
+  const removeTaxCharge = (i: number) => setTaxCharges(taxCharges.filter((_, idx) => idx !== i));
+  const updateTaxCharge = (i: number, field: string, val: any) => {
+    setTaxCharges(taxCharges.map((c, idx) => idx === i ? { ...c, [field]: field === 'amount' ? Number(val) : val } : c));
+  };
+
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Live Orders", icon: ShoppingBag },
     { id: "products", label: "Products", icon: Package },
     { id: "categories", label: "Category", icon: Grid },
     { id: "zones", label: "Zones", icon: MapPin },
-    { id: "coupons", label: "Coupons", icon: Ticket },
     { id: "customers", label: "Customers", icon: Users },
+    { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
 
   if (authLoading || !user) return null;
@@ -527,6 +565,40 @@ export default function AdminPage() {
                 </Card>
               ))}
             </div>
+          </div>
+        )}
+
+        {view === "settings" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black italic uppercase">GLOBAL SETTINGS</h2>
+            <Card className="p-8 rounded-[2.5rem] bg-white shadow-lg space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-black italic uppercase text-lg">Tax Charges & Fees</h3>
+                  <Button onClick={addTaxCharge} className="rounded-2xl gap-2"><Plus className="w-5 h-5" /> Add Charge</Button>
+                </div>
+                <div className="space-y-4">
+                  {taxCharges.map((charge, idx) => (
+                    <div key={idx} className="flex gap-4 items-center bg-gray-50 p-4 rounded-2xl">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-[10px] font-black uppercase text-gray-400">Charge Label (e.g. GST)</Label>
+                        <Input value={charge.label} onChange={e => updateTaxCharge(idx, 'label', e.target.value)} className="h-12 rounded-xl bg-white border-none" />
+                      </div>
+                      <div className="w-32 space-y-1">
+                        <Label className="text-[10px] font-black uppercase text-gray-400">Amount (₹)</Label>
+                        <Input type="number" value={charge.amount} onChange={e => updateTaxCharge(idx, 'amount', e.target.value)} className="h-12 rounded-xl bg-white border-none" />
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => removeTaxCharge(idx)} className="text-red-500 mt-5"><Trash2 className="w-5 h-5" /></Button>
+                    </div>
+                  ))}
+                  {taxCharges.length === 0 && <p className="text-center py-8 text-gray-400 font-bold uppercase text-xs">No extra charges defined</p>}
+                </div>
+              </div>
+              <Button onClick={handleSaveSettings} disabled={savingSettings} className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase shadow-xl gap-2">
+                {savingSettings ? <Loader2 className="animate-spin" /> : <Save className="w-6 h-6" />}
+                Save Global Settings
+              </Button>
+            </Card>
           </div>
         )}
 

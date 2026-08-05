@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useCart } from "@/components/cart/cart-provider";
-import { useUser, useFirestore } from "@/firebase";
+import { useUser, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -22,14 +22,21 @@ import {
   Minus,
   CheckCircle2,
   ChevronRight,
-  Loader2
+  Loader2,
+  Save
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from "@/lib/utils";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 const FREE_DELIVERY_THRESHOLD = 400;
 
@@ -42,7 +49,12 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [isOrdered, setIsOrdered] = useState(false);
   
-  // Custom states matching the UI
+  // Settings and User Data
+  const customerRef = useMemo(() => user ? doc(db, "customers", user.uid) : null, [db, user]);
+  const { data: customerData } = useDoc(customerRef);
+  const { data: settingsData } = useDoc(doc(db, "settings", "global"));
+
+  // Form states
   const [instructions, setInstructions] = useState("");
   const [premiumPacking, setPremiumPacking] = useState(false);
   const [redeemCoins, setRedeemCoins] = useState(false);
@@ -50,18 +62,35 @@ export default function CheckoutPage() {
   const [tip, setTip] = useState<number | null>(10);
   const [paymentMode, setPaymentMode] = useState<'UPI' | 'COD'>('UPI');
   
+  // Address state
+  const [isAddressSheetOpen, setIsAddressSheetOpen] = useState(false);
+  const [addressInput, setAddressInput] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
+
   // Slider state
   const [sliderVal, setSliderVal] = useState(0);
-  const sliderRef = useRef<HTMLDivElement>(null);
 
   // Calculations
   const deliveryCharge = total >= FREE_DELIVERY_THRESHOLD ? 0 : 10;
   const packingCharge = premiumPacking ? 10 : 0;
   const tipAmount = tip || 0;
-  const grandTotal = total + deliveryCharge + packingCharge + tipAmount;
+  
+  const taxChargesTotal = useMemo(() => {
+    if (!settingsData?.taxCharges) return 0;
+    return settingsData.taxCharges.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+  }, [settingsData]);
+
+  const grandTotal = total + deliveryCharge + packingCharge + tipAmount + taxChargesTotal;
 
   const handlePlaceOrder = async () => {
     if (!user) return;
+    if (!customerData?.address) {
+      toast({ variant: "destructive", title: "Address Required", description: "Please add your delivery address." });
+      setSliderVal(0);
+      setIsAddressSheetOpen(true);
+      return;
+    }
+
     setLoading(true);
     
     const orderData = {
@@ -73,6 +102,7 @@ export default function CheckoutPage() {
       tipAmount,
       packingUsed: premiumPacking,
       paymentMode,
+      address: customerData.address,
       status: "Processing",
       createdAt: serverTimestamp(),
     };
@@ -91,6 +121,25 @@ export default function CheckoutPage() {
           operation: 'create',
           requestResourceData: orderData
         } satisfies SecurityRuleContext));
+      });
+  };
+
+  const handleSaveAddress = () => {
+    if (!addressInput.trim() || !customerRef) return;
+    setSavingAddress(true);
+    updateDoc(customerRef, { address: addressInput })
+      .then(() => {
+        toast({ title: "Address Saved!" });
+        setSavingAddress(false);
+        setIsAddressSheetOpen(false);
+      })
+      .catch(async () => {
+        setSavingAddress(false);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: `customers/${user?.uid}`,
+          operation: 'update',
+          requestResourceData: { address: addressInput }
+        }));
       });
   };
 
@@ -217,31 +266,29 @@ export default function CheckoutPage() {
           />
         </div>
 
-        {/* Verification Photo */}
-        <div className="bg-[#2D2D2D] rounded-[2.5rem] p-6 text-white shadow-lg space-y-4">
-          <div className="flex items-center gap-3">
-            <Camera className="w-5 h-5 text-[#FFB800]" />
-            <h3 className="font-black italic uppercase text-sm tracking-tight">Verification Photo <span className="text-gray-500 font-bold">(Optional)</span></h3>
-          </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Upload house photo, your selfie, or nearby landmark</p>
-          <div className="w-full h-32 bg-black/30 border-2 border-dashed border-white/10 rounded-3xl flex flex-col items-center justify-center cursor-pointer group hover:border-[#FFB800]/30 transition-colors">
-            <Camera className="w-8 h-8 text-gray-600 group-hover:text-[#FFB800]/50 mb-2" />
-            <span className="text-[10px] font-black uppercase text-gray-500">Tap to upload photo</span>
-          </div>
-        </div>
-
         {/* Delivery Address */}
         <div className="bg-[#2D2D2D] rounded-2xl p-4 text-white flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
             <div className="bg-black/40 p-2 rounded-xl">
               <MapPin className="w-5 h-5 text-[#FFB800] fill-[#FFB800]" />
             </div>
-            <div>
-              <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-500">Delivery to: {user?.displayName || "User"}</p>
-              <p className="text-xs font-bold truncate max-w-[150px]">NEAR JIO-CINEMA, DELHI</p>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-500">Deliver to: {user?.displayName || "User"}</p>
+              <p className="text-xs font-bold truncate">
+                {customerData?.address || "No address saved"}
+              </p>
             </div>
           </div>
-          <Button variant="ghost" className="bg-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase h-8 px-4">Change</Button>
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              setAddressInput(customerData?.address || "");
+              setIsAddressSheetOpen(true);
+            }}
+            className="bg-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase h-8 px-4 shrink-0"
+          >
+            {customerData?.address ? "Change" : "Add"}
+          </Button>
         </div>
 
         {/* Enhancements */}
@@ -342,6 +389,12 @@ export default function CheckoutPage() {
                 <span className="text-lg">₹10</span>
               </div>
             )}
+            {settingsData?.taxCharges?.map((charge: any, i: number) => (
+              <div key={i} className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
+                <span className="text-gray-400 italic">{charge.label}:</span>
+                <span className="text-lg">₹{charge.amount}</span>
+              </div>
+            ))}
             {tipAmount > 0 && (
               <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
                 <span className="text-gray-400 italic">Rider Tip:</span>
@@ -425,13 +478,42 @@ export default function CheckoutPage() {
             </span>
           </div>
           
-          {/* Progress fill */}
           <div 
             className="absolute left-0 top-0 h-full bg-[#FFB800]/10 -z-1"
             style={{ width: `${sliderVal}%` }}
           />
         </div>
       </div>
+
+      {/* Address Sheet */}
+      <Sheet open={isAddressSheetOpen} onOpenChange={setIsAddressSheetOpen}>
+        <SheetContent side="bottom" className="h-[50vh] rounded-t-[3rem] p-8 bg-white border-none z-[1001]">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
+              DELIVERY <span className="text-primary">ADDRESS</span>
+            </SheetTitle>
+          </SheetHeader>
+          <div className="space-y-6">
+            <div className="relative">
+              <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+              <textarea 
+                placeholder="Enter your full flat, floor, building and landmark..."
+                value={addressInput}
+                onChange={(e) => setAddressInput(e.target.value)}
+                className="w-full h-32 pl-12 pr-6 py-4 rounded-3xl bg-gray-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <Button 
+              onClick={handleSaveAddress} 
+              disabled={savingAddress || !addressInput.trim()}
+              className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl gap-2"
+            >
+              {savingAddress ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />}
+              Save & Continue
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
