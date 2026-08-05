@@ -23,7 +23,10 @@ import {
   CheckCircle2,
   ChevronRight,
   Loader2,
-  Save
+  Save,
+  User as UserIcon,
+  Phone,
+  Building
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
@@ -37,6 +40,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const FREE_DELIVERY_THRESHOLD = 400;
 
@@ -62,9 +66,16 @@ export default function CheckoutPage() {
   const [tip, setTip] = useState<number | null>(10);
   const [paymentMode, setPaymentMode] = useState<'UPI' | 'COD'>('UPI');
   
-  // Address state
+  // Detailed Address states
   const [isAddressSheetOpen, setIsAddressSheetOpen] = useState(false);
-  const [addressInput, setAddressInput] = useState("");
+  const [addressForm, setAddressForm] = useState({
+    name: "",
+    phone: "",
+    pincode: "",
+    state: "",
+    city: "",
+    detailedAddress: ""
+  });
   const [savingAddress, setSavingAddress] = useState(false);
 
   // Slider state
@@ -82,6 +93,20 @@ export default function CheckoutPage() {
 
   const grandTotal = total + deliveryCharge + packingCharge + tipAmount + taxChargesTotal;
 
+  // Initialize form when sheet opens
+  useEffect(() => {
+    if (isAddressSheetOpen && customerData) {
+      setAddressForm({
+        name: customerData.name || user?.displayName || "",
+        phone: customerData.phone || "",
+        pincode: customerData.pincode || "",
+        state: customerData.state || "",
+        city: customerData.city || "",
+        detailedAddress: customerData.address || ""
+      });
+    }
+  }, [isAddressSheetOpen, customerData, user]);
+
   const handlePlaceOrder = async () => {
     if (!user) return;
     if (!customerData?.address) {
@@ -93,16 +118,19 @@ export default function CheckoutPage() {
 
     setLoading(true);
     
+    const fullAddress = `${addressForm.detailedAddress}, ${addressForm.city}, ${addressForm.state} - ${addressForm.pincode}`;
+    
     const orderData = {
       customerId: user.uid,
-      customerName: user.displayName,
+      customerName: addressForm.name || customerData.name || user.displayName,
+      customerPhone: addressForm.phone || customerData.phone || "",
       items: items,
       total: grandTotal,
       instructions,
       tipAmount,
       packingUsed: premiumPacking,
       paymentMode,
-      address: customerData.address,
+      address: fullAddress,
       status: "Processing",
       createdAt: serverTimestamp(),
     };
@@ -125,11 +153,27 @@ export default function CheckoutPage() {
   };
 
   const handleSaveAddress = () => {
-    if (!addressInput.trim() || !customerRef) return;
+    const { name, phone, pincode, state, city, detailedAddress } = addressForm;
+    if (!name || !phone || !pincode || !state || !city || !detailedAddress) {
+      toast({ variant: "destructive", title: "Missing Fields", description: "All address fields are required." });
+      return;
+    }
+    if (!customerRef) return;
+    
     setSavingAddress(true);
-    updateDoc(customerRef, { address: addressInput })
+    const updateData = { 
+      name, 
+      phone, 
+      pincode, 
+      state, 
+      city, 
+      address: detailedAddress,
+      updatedAt: serverTimestamp()
+    };
+    
+    updateDoc(customerRef, updateData)
       .then(() => {
-        toast({ title: "Address Saved!" });
+        toast({ title: "Profile & Address Updated!" });
         setSavingAddress(false);
         setIsAddressSheetOpen(false);
       })
@@ -138,7 +182,7 @@ export default function CheckoutPage() {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: `customers/${user?.uid}`,
           operation: 'update',
-          requestResourceData: { address: addressInput }
+          requestResourceData: updateData
         }));
       });
   };
@@ -183,6 +227,10 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  const formattedSavedAddress = customerData?.address 
+    ? `${customerData.address}, ${customerData.city || ''}, ${customerData.state || ''} - ${customerData.pincode || ''}`
+    : "No address saved";
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] pb-32">
@@ -268,23 +316,20 @@ export default function CheckoutPage() {
 
         {/* Delivery Address */}
         <div className="bg-[#2D2D2D] rounded-2xl p-4 text-white flex items-center justify-between shadow-lg">
-          <div className="flex items-center gap-3">
-            <div className="bg-black/40 p-2 rounded-xl">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="bg-black/40 p-2 rounded-xl shrink-0">
               <MapPin className="w-5 h-5 text-[#FFB800] fill-[#FFB800]" />
             </div>
             <div className="flex-1 overflow-hidden">
-              <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-500">Deliver to: {user?.displayName || "User"}</p>
+              <p className="text-[10px] font-black uppercase italic tracking-tighter text-gray-500">Deliver to: {customerData?.name || user?.displayName || "User"}</p>
               <p className="text-xs font-bold truncate">
-                {customerData?.address || "No address saved"}
+                {formattedSavedAddress}
               </p>
             </div>
           </div>
           <Button 
             variant="ghost" 
-            onClick={() => {
-              setAddressInput(customerData?.address || "");
-              setIsAddressSheetOpen(true);
-            }}
+            onClick={() => setIsAddressSheetOpen(true)}
             className="bg-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase h-8 px-4 shrink-0"
           >
             {customerData?.address ? "Change" : "Add"}
@@ -485,33 +530,99 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Address Sheet */}
+      {/* Detailed Address Sheet */}
       <Sheet open={isAddressSheetOpen} onOpenChange={setIsAddressSheetOpen}>
-        <SheetContent side="bottom" className="h-[50vh] rounded-t-[3rem] p-8 bg-white border-none z-[1001]">
-          <SheetHeader className="mb-6">
-            <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
-              DELIVERY <span className="text-primary">ADDRESS</span>
-            </SheetTitle>
-          </SheetHeader>
-          <div className="space-y-6">
-            <div className="relative">
-              <MapPin className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
-              <textarea 
-                placeholder="Enter your full flat, floor, building and landmark..."
-                value={addressInput}
-                onChange={(e) => setAddressInput(e.target.value)}
-                className="w-full h-32 pl-12 pr-6 py-4 rounded-3xl bg-gray-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary outline-none"
-              />
+        <SheetContent side="bottom" className="h-[90vh] rounded-t-[3rem] p-0 bg-white border-none z-[1001]">
+          <ScrollArea className="h-full">
+            <div className="p-8 pb-20 space-y-6">
+              <SheetHeader className="mb-6">
+                <SheetTitle className="text-2xl font-black italic uppercase tracking-tighter">
+                  DELIVERY <span className="text-primary">DETAILS</span>
+                </SheetTitle>
+              </SheetHeader>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Customer Name</label>
+                  <div className="relative">
+                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Input 
+                      placeholder="Enter Full Name"
+                      value={addressForm.name}
+                      onChange={(e) => setAddressForm({ ...addressForm, name: e.target.value })}
+                      className="h-14 pl-12 rounded-2xl bg-gray-50 border-none font-bold focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Input 
+                      placeholder="Enter Phone Number"
+                      value={addressForm.phone}
+                      onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })}
+                      className="h-14 pl-12 rounded-2xl bg-gray-50 border-none font-bold focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pincode</label>
+                    <Input 
+                      placeholder="Pincode"
+                      value={addressForm.pincode}
+                      onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+                      className="h-14 px-6 rounded-2xl bg-gray-50 border-none font-bold focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">State</label>
+                    <Input 
+                      placeholder="State"
+                      value={addressForm.state}
+                      onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+                      className="h-14 px-6 rounded-2xl bg-gray-50 border-none font-bold focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Town / City</label>
+                  <Input 
+                    placeholder="Town / City"
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+                    className="h-14 px-6 rounded-2xl bg-gray-50 border-none font-bold focus:ring-1 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Detailed Address</label>
+                  <div className="relative">
+                    <Building className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
+                    <textarea 
+                      placeholder="House No, Floor, Building Name, Landmark..."
+                      value={addressForm.detailedAddress}
+                      onChange={(e) => setAddressForm({ ...addressForm, detailedAddress: e.target.value })}
+                      className="w-full h-32 pl-12 pr-6 py-4 rounded-3xl bg-gray-50 border-none font-bold text-sm focus:ring-1 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleSaveAddress} 
+                  disabled={savingAddress}
+                  className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl gap-2 mt-4"
+                >
+                  {savingAddress ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />}
+                  Save Delivery Details
+                </Button>
+              </div>
             </div>
-            <Button 
-              onClick={handleSaveAddress} 
-              disabled={savingAddress || !addressInput.trim()}
-              className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl gap-2"
-            >
-              {savingAddress ? <Loader2 className="animate-spin" /> : <Save className="w-5 h-5" />}
-              Save & Continue
-            </Button>
-          </div>
+          </ScrollArea>
         </SheetContent>
       </Sheet>
     </div>
