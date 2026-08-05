@@ -2,7 +2,6 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import dynamic from "next/dynamic";
 import { 
   LayoutDashboard, 
   Package, 
@@ -13,17 +12,13 @@ import {
   Menu,
   Grid,
   ImageIcon,
-  Ticket,
   ShoppingBag,
   Star,
   Edit3,
-  MapPin,
-  Map as MapIcon,
   Save,
-  RotateCcw,
-  X,
   Settings as SettingsIcon,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -59,11 +54,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
-const ZoneMap = dynamic(() => import('@/components/admin/ZoneMap'), { 
-  ssr: false, 
-  loading: () => <div className="h-full w-full bg-gray-100 flex items-center justify-center font-bold text-gray-400">Loading Map...</div> 
-});
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -109,17 +99,13 @@ export default function AdminPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isProductSheetOpen, setIsProductSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const [isZoneSheetOpen, setIsZoneSheetOpen] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
-  const [editingZoneId, setEditingZoneId] = useState<string | null>(null);
 
   const productFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
-
-  const [zonePoints, setZonePoints] = useState<[number, number][]>([]);
 
   // Settings state
   const settingsRef = useMemo(() => doc(db, "settings", "global"), [db]);
@@ -152,9 +138,6 @@ export default function AdminPage() {
   const ordersQuery = useMemo(() => user ? query(collection(db, "orders"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: orders } = useCollection(ordersQuery);
 
-  const zonesQuery = useMemo(() => user ? query(collection(db, "zones"), orderBy("name", "asc")) : null, [db, user]);
-  const { data: zones } = useCollection(zonesQuery);
-
   const customersQuery = useMemo(() => user ? query(collection(db, "customers"), orderBy("joinedAt", "desc")) : null, [db, user]);
   const { data: customers } = useCollection(customersQuery);
 
@@ -164,7 +147,6 @@ export default function AdminPage() {
   });
 
   const [categoryForm, setCategoryForm] = useState({ name: "", imageData: "" });
-  const [zoneForm, setZoneForm] = useState({ name: "", pincode: "" });
 
   const addPricingTier = () => {
     setProductForm(p => ({
@@ -288,48 +270,6 @@ export default function AdminPage() {
     setIsCategorySheetOpen(false);
   };
 
-  const handleAddZone = () => {
-    if (!zoneForm.name || !zoneForm.pincode || zonePoints.length < 3) {
-      toast({ variant: "destructive", title: "Invalid Zone", description: "Name, Pincode and at least 3 map points required." });
-      return;
-    }
-    const formattedPoints = zonePoints.map(p => ({ lat: p[0], lng: p[1] }));
-    const data = { 
-      ...zoneForm, 
-      points: formattedPoints,
-      updatedAt: serverTimestamp() 
-    };
-    if (editingZoneId) {
-      updateDoc(doc(db, "zones", editingZoneId), data)
-        .then(() => { toast({ title: "Zone Updated" }); resetZoneForm(); })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: `zones/${editingZoneId}`,
-            operation: 'update',
-            requestResourceData: data
-          }));
-        });
-    } else {
-      const newZone = { ...data, createdAt: serverTimestamp() };
-      addDoc(collection(db, "zones"), newZone)
-        .then(() => { toast({ title: "Zone Created" }); resetZoneForm(); })
-        .catch(async () => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'zones',
-            operation: 'create',
-            requestResourceData: newZone
-          }));
-        });
-    }
-  };
-
-  const resetZoneForm = () => {
-    setZoneForm({ name: "", pincode: "" });
-    setZonePoints([]);
-    setEditingZoneId(null);
-    setIsZoneSheetOpen(false);
-  };
-
   const handleSaveSettings = () => {
     setSavingSettings(true);
     const data = { taxCharges, updatedAt: serverTimestamp() };
@@ -359,7 +299,6 @@ export default function AdminPage() {
     { id: "orders", label: "Live Orders", icon: ShoppingBag },
     { id: "products", label: "Products", icon: Package },
     { id: "categories", label: "Category", icon: Grid },
-    { id: "zones", label: "Zones", icon: MapPin },
     { id: "customers", label: "Customers", icon: Users },
     { id: "settings", label: "Settings", icon: SettingsIcon },
   ];
@@ -474,7 +413,6 @@ export default function AdminPage() {
                       </Select>
                       <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
                       
-                      {/* Pricing Tiers Section */}
                       <div className="space-y-4 bg-gray-50 p-6 rounded-[2rem]">
                         <div className="flex items-center justify-between">
                           <h4 className="font-black italic uppercase text-sm">Quantity Pricing Tiers</h4>
@@ -599,51 +537,6 @@ export default function AdminPage() {
                 Save Global Settings
               </Button>
             </Card>
-          </div>
-        )}
-
-        {view === "zones" && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black italic uppercase">DELIVERY ZONES</h2>
-              <Sheet open={isZoneSheetOpen} onOpenChange={setIsZoneSheetOpen}>
-                <SheetTrigger asChild>
-                  <Button onClick={() => { resetZoneForm(); setIsZoneSheetOpen(true); }} className="rounded-2xl bg-black text-white h-12 gap-2 px-6 shadow-lg"><Plus className="w-5 h-5" /> Create Zone</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white z-[1001] p-0">
-                  <ScrollArea className="h-full px-8 py-8">
-                    <div className="p-8 max-w-4xl mx-auto space-y-6">
-                      <SheetHeader><SheetTitle className="text-2xl font-black uppercase italic">Setup Coverage Zone</SheetTitle></SheetHeader>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input placeholder="Zone Name (e.g. South Delhi)" value={zoneForm.name} onChange={e => setZoneForm({...zoneForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <Input placeholder="Central Pincode" value={zoneForm.pincode} onChange={e => setZoneForm({...zoneForm, pincode: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                      </div>
-                      <div className="h-[450px] rounded-3xl overflow-hidden border-2 border-gray-100 relative z-0">
-                        {isClient && (
-                          <ZoneMap 
-                            center={zonePoints.length > 0 ? zonePoints[0] : [28.6139, 77.2090]} 
-                            points={zonePoints}
-                            onMapClick={(pos) => setZonePoints([...zonePoints, pos])}
-                          />
-                        )}
-                        <button onClick={() => setZonePoints([])} className="absolute bottom-4 right-4 z-[1000] bg-white p-3 rounded-2xl shadow-xl text-red-500 font-bold text-xs uppercase flex items-center gap-2"><RotateCcw className="w-4 h-4" /> Reset</button>
-                      </div>
-                      <Button onClick={handleAddZone} className="h-16 w-full rounded-2xl bg-primary text-white font-black uppercase italic shadow-xl flex items-center justify-center gap-2">
-                        <Save className="w-6 h-6" /> Save Coverage Zone
-                      </Button>
-                    </div>
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {zones?.map((z: any) => (
-                <Card key={z.id} className="p-6 rounded-[2rem] bg-white flex justify-between items-center shadow-lg border-l-4 border-primary">
-                  <div className="flex items-center gap-4"><div className="bg-gray-50 p-3 rounded-2xl"><MapIcon className="w-6 h-6 text-gray-400" /></div><div><h4 className="font-black text-lg">{z.name}</h4><p className="text-xs text-gray-500 font-bold uppercase">{z.pincode} • {z.points?.length || 0} Points</p></div></div>
-                  <button onClick={() => { deleteDoc(doc(db, "zones", z.id)).catch(async () => { errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `zones/${z.id}`, operation: 'delete' })); }); }} className="text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
-                </Card>
-              ))}
-            </div>
           </div>
         )}
       </main>

@@ -14,7 +14,6 @@ import { Package, Star, ShieldCheck, Zap, Award } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { SmartBasketAssistant } from "@/components/ai/smart-basket-assistant";
 import { ProductCard } from "@/components/home/product-card";
-import { ZoneSelector } from "@/components/layout/zone-selector";
 
 export default function Home() {
   const db = useFirestore();
@@ -43,7 +42,6 @@ export default function Home() {
 
   return (
     <AuthGuard>
-      <ZoneSelector />
       <TopBar />
       <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col bg-white">
         <div className="bg-gradient-to-b from-[#FF6B00] to-[#FFD54F] rounded-b-[3rem] shadow-sm pb-16">

@@ -96,27 +96,6 @@
       },
       "required": ["name", "email"]
     },
-    "Zone": {
-      "title": "Zone",
-      "description": "Delivery zones with boundary points",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "pincode": { "type": "string" },
-        "points": { 
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "lat": { "type": "number" },
-              "lng": { "type": "number" }
-            }
-          }
-        },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "pincode"]
-    },
     "AppSettings": {
       "title": "AppSettings",
       "description": "Global application configuration",
@@ -163,10 +142,6 @@
     "/customers/{customerId}": {
       "schema": "Customer",
       "description": "Store for customer profiles"
-    },
-    "/zones/{zoneId}": {
-      "schema": "Zone",
-      "description": "Store for delivery zones"
     },
     "/settings/{settingId}": {
       "schema": "AppSettings",

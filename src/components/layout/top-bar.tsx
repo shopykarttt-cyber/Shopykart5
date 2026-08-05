@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Zap, ShoppingCart, MapPin } from "lucide-react";
+import { Search, Zap, ShoppingCart } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { CartSheet } from "@/components/cart/cart-sheet";
 import { useCart } from "@/components/cart/cart-provider";
@@ -14,7 +14,6 @@ export function TopBar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   
   // Typewriter effect states
   const [placeholder, setPlaceholder] = useState("");
@@ -23,10 +22,6 @@ export function TopBar() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    // Load zone
-    const savedZone = localStorage.getItem("grosify_selected_zone");
-    if (savedZone) setSelectedZone(savedZone);
-
     const currentWord = SUGGESTIONS[suggestionIndex];
     const fullText = `Search "${currentWord}"...`;
     const speed = isDeleting ? 40 : 80;
@@ -63,15 +58,13 @@ export function TopBar() {
   return (
     <div className="bg-[#FF6B00] px-5 pt-4 pb-3 sticky top-0 z-40 md:rounded-t-[2.5rem]">
       <div className="flex items-center gap-3 max-w-7xl mx-auto w-full">
-        {/* Zone Indicator */}
-        <div className="flex flex-col shrink-0">
-          <span className="text-[7px] font-black text-white/70 uppercase tracking-widest leading-none">Deliver to</span>
-          <div className="flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-white fill-white" />
-            <span className="text-[10px] font-black text-white uppercase italic leading-none truncate max-w-[60px]">
-              {selectedZone || "Select"}
-            </span>
-          </div>
+        {/* Logo / Brand */}
+        <div 
+          onClick={() => router.push('/')}
+          className="flex flex-col shrink-0 cursor-pointer"
+        >
+          <span className="text-xl font-black text-white italic tracking-tighter uppercase leading-none">GROSIFY</span>
+          <span className="text-[7px] font-black text-white/50 uppercase tracking-[0.2em] leading-none">FRESH DAILY</span>
         </div>
 
         {/* Animated Search Bar */}
