@@ -35,9 +35,10 @@ service cloud.firestore {
     }
 
     match /customers/{customerId} {
-      allow create: if isAuthenticated() && request.auth.uid == customerId;
-      allow update, delete: if isOwner(customerId);
-      allow read: if isAuthenticated();
+      // Simplified rules to ensure robust profile management
+      allow read, write: if isAuthenticated() && request.auth.uid == customerId;
+      // Allow reading all customers for admin purposes (MVP)
+      allow list: if isAuthenticated();
     }
 
     match /settings/{settingId} {

@@ -28,7 +28,7 @@ import {
   Building
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -184,7 +184,8 @@ export default function CheckoutPage() {
       updatedAt: serverTimestamp()
     };
     
-    updateDoc(customerRef, updateData)
+    // Using setDoc with merge: true is safer than updateDoc as it handles missing documents
+    setDoc(customerRef, updateData, { merge: true })
       .then(() => {
         toast({ title: "Address Saved Permanently!" });
         setSavingAddress(false);
@@ -194,7 +195,7 @@ export default function CheckoutPage() {
         setSavingAddress(false);
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: `customers/${user?.uid}`,
-          operation: 'update',
+          operation: 'write',
           requestResourceData: updateData
         }));
       });
