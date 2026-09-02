@@ -25,7 +25,8 @@ import {
   Save,
   User as UserIcon,
   Phone,
-  Building
+  Building,
+  X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, setDoc } from "firebase/firestore";
@@ -60,9 +61,8 @@ export default function CheckoutPage() {
   // Form states
   const [instructions, setInstructions] = useState("");
   const [premiumPacking, setPremiumPacking] = useState(false);
-  const [redeemCoins, setRedeemCoins] = useState(false);
   const [promoCode, setPromoCode] = useState("");
-  const [tip, setTip] = useState<number | null>(10);
+  const [tip, setTip] = useState<number | null>(null);
   const [paymentMode, setPaymentMode] = useState<'UPI' | 'COD'>('UPI');
   
   // Detailed Address states
@@ -81,8 +81,6 @@ export default function CheckoutPage() {
   const [sliderVal, setSliderVal] = useState(0);
 
   // Calculations
-  const deliveryCharge = total >= FREE_DELIVERY_THRESHOLD ? 0 : 10;
-  const packingCharge = premiumPacking ? 10 : 0;
   const tipAmount = tip || 0;
   
   const taxChargesTotal = useMemo(() => {
@@ -90,7 +88,7 @@ export default function CheckoutPage() {
     return settingsData.taxCharges.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
   }, [settingsData]);
 
-  const grandTotal = total + deliveryCharge + packingCharge + tipAmount + taxChargesTotal;
+  const grandTotal = total + tipAmount + taxChargesTotal;
 
   // Sync form with customer data when it's available
   useEffect(() => {
@@ -184,7 +182,6 @@ export default function CheckoutPage() {
       updatedAt: serverTimestamp()
     };
     
-    // Using setDoc with merge: true is safer than updateDoc as it handles missing documents
     setDoc(customerRef, updateData, { merge: true })
       .then(() => {
         toast({ title: "Address Saved Permanently!" });
@@ -247,7 +244,7 @@ export default function CheckoutPage() {
     : "No delivery address found";
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-32">
+    <div className="min-h-screen bg-[#FDFDFD]">
       {/* Header */}
       <header className="bg-white px-6 py-6 border-b flex items-center justify-between sticky top-0 z-50">
         <button onClick={() => router.back()} className="p-2 -ml-2">
@@ -257,7 +254,7 @@ export default function CheckoutPage() {
         <div className="w-8" />
       </header>
 
-      <main className="p-4 space-y-4 max-w-xl mx-auto">
+      <main className="p-4 space-y-4 max-w-xl mx-auto pb-40">
         
         {/* Free Delivery Target */}
         <div className="bg-[#2D2D2D] rounded-[2rem] p-5 text-white shadow-lg">
@@ -363,7 +360,7 @@ export default function CheckoutPage() {
                 <div className="bg-pink-500/20 p-2.5 rounded-xl"><Box className="w-5 h-5 text-pink-500" /></div>
                 <div>
                   <h4 className="font-bold text-xs uppercase">Premium Packing</h4>
-                  <p className="text-[10px] text-gray-500 font-bold">+₹10 for extra safety</p>
+                  <p className="text-[10px] text-gray-500 font-bold">Extra safety for items</p>
                 </div>
               </div>
               <Switch checked={premiumPacking} onCheckedChange={setPremiumPacking} />
@@ -424,7 +421,16 @@ export default function CheckoutPage() {
                 ₹{amt}
               </button>
             ))}
-            <button className="h-14 rounded-2xl border-2 border-white/5 bg-black/20 text-gray-400 font-bold uppercase text-[10px]">Other</button>
+            <button 
+              onClick={() => setTip(null)}
+              className={cn(
+                "h-14 rounded-2xl border-2 transition-all flex items-center justify-center gap-1",
+                tip === null ? "border-red-500/50 bg-red-500/10 text-red-500" : "border-white/5 bg-black/20 text-gray-400"
+              )}
+            >
+              <X className="w-4 h-4" />
+              <span className="font-bold uppercase text-[10px]">None</span>
+            </button>
           </div>
         </div>
 
@@ -436,18 +442,7 @@ export default function CheckoutPage() {
               <span className="text-gray-400 italic">Subtotal</span>
               <span className="text-lg">₹{total}</span>
             </div>
-            <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-              <span className="text-gray-400 italic">Delivery Fee</span>
-              <span className={cn("text-lg", deliveryCharge === 0 ? "text-green-400" : "")}>
-                {deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge}`}
-              </span>
-            </div>
-            {premiumPacking && (
-              <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                <span className="text-gray-400 italic">Premium Packing</span>
-                <span className="text-lg">₹10</span>
-              </div>
-            )}
+            
             {settingsData?.taxCharges?.map((charge: any, i: number) => (
               <div key={i} className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
                 <span className="text-gray-400 italic">{charge.label}</span>
@@ -510,38 +505,38 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-      </main>
-
-      {/* Slide to Order Button */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-4 z-[100]">
-        <div className="bg-[#3D3D33] h-20 rounded-full p-2 flex items-center relative overflow-hidden shadow-2xl border border-white/5">
-          <input 
-            type="range"
-            min="0"
-            max="100"
-            value={sliderVal}
-            onChange={handleSliderChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            disabled={loading}
-          />
-          <div 
-            className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 pointer-events-none"
-            style={{ marginLeft: `${sliderVal * 0.8}%` }}
-          >
-            {loading ? <Loader2 className="w-6 h-6 text-primary animate-spin" /> : <ChevronRight className="w-8 h-8 text-primary" />}
+        {/* Slide to Order Button (Now at bottom of content) */}
+        <div className="pt-8 pb-12 w-full max-w-sm mx-auto">
+          <div className="bg-[#3D3D33] h-20 rounded-full p-2 flex items-center relative overflow-hidden shadow-2xl border border-white/5">
+            <input 
+              type="range"
+              min="0"
+              max="100"
+              value={sliderVal}
+              onChange={handleSliderChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              disabled={loading}
+            />
+            <div 
+              className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-lg transition-all duration-200 pointer-events-none"
+              style={{ marginLeft: `${sliderVal * 0.8}%` }}
+            >
+              {loading ? <Loader2 className="w-6 h-6 text-primary animate-spin" /> : <ChevronRight className="w-8 h-8 text-primary" />}
+            </div>
+            <div className="flex-1 text-center pr-12">
+              <span className="text-white font-black italic uppercase tracking-tighter text-lg flex items-center justify-center gap-3">
+                Slide to Order <span className="text-[#FFB800] text-2xl">₹{grandTotal}</span>
+              </span>
+            </div>
+            
+            <div 
+              className="absolute left-0 top-0 h-full bg-[#FFB800]/20 -z-1 transition-all duration-300"
+              style={{ width: `${sliderVal}%` }}
+            />
           </div>
-          <div className="flex-1 text-center pr-12">
-            <span className="text-white font-black italic uppercase tracking-tighter text-lg flex items-center justify-center gap-3">
-              Slide to Order <span className="text-[#FFB800] text-2xl">₹{grandTotal}</span>
-            </span>
-          </div>
-          
-          <div 
-            className="absolute left-0 top-0 h-full bg-[#FFB800]/20 -z-1 transition-all duration-300"
-            style={{ width: `${sliderVal}%` }}
-          />
         </div>
-      </div>
+
+      </main>
 
       {/* Detailed Address Sheet */}
       <Sheet open={isAddressSheetOpen} onOpenChange={setIsAddressSheetOpen}>

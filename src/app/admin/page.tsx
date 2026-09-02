@@ -609,14 +609,14 @@ export default function AdminPage() {
             <Card className="p-8 rounded-[2.5rem] bg-white shadow-lg space-y-8">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black italic uppercase text-lg">Tax Charges & Fees</h3>
+                  <h3 className="font-black italic uppercase text-lg">Additional Bill Charges</h3>
                   <Button onClick={addTaxCharge} className="rounded-2xl gap-2"><Plus className="w-5 h-5" /> Add Charge</Button>
                 </div>
                 <div className="space-y-4">
                   {taxCharges.map((charge, idx) => (
                     <div key={idx} className="flex gap-4 items-center bg-gray-50 p-4 rounded-2xl">
                       <div className="flex-1 space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-gray-400">Charge Label (e.g. GST)</Label>
+                        <Label className="text-[10px] font-black uppercase text-gray-400">Charge Label (e.g. Handling Fee)</Label>
                         <Input value={charge.label} onChange={e => updateTaxCharge(idx, 'label', e.target.value)} className="h-12 rounded-xl bg-white border-none" />
                       </div>
                       <div className="w-32 space-y-1">
