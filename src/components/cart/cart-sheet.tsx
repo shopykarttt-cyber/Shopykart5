@@ -11,6 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -73,12 +74,14 @@ export function CartSheet({ children }: { children: React.ReactNode }) {
               <span className="font-bold text-gray-500 uppercase tracking-widest text-xs">Total Amount</span>
               <span className="text-2xl font-black italic">₹{total}</span>
             </div>
-            <Button 
-              onClick={() => router.push('/checkout')}
-              className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl flex items-center justify-center gap-2 group"
-            >
-              Checkout <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
+            <SheetClose asChild>
+              <Button 
+                onClick={() => router.push('/checkout')}
+                className="w-full h-16 rounded-[2rem] bg-black text-white font-black italic uppercase text-lg shadow-xl flex items-center justify-center gap-2 group"
+              >
+                Checkout <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </SheetClose>
           </div>
         )}
       </SheetContent>
