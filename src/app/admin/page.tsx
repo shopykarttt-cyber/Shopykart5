@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
@@ -66,7 +65,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogDescription,
-  AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 
 const SALES_DATA = [
@@ -388,7 +386,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
       {/* Real-time Order Alert Overlay */}
       <AlertDialog open={isAlertOpen}>
-        <AlertDialogContent className="max-w-md rounded-[3rem] p-8 border-none bg-black text-white shadow-[0_0_100px_rgba(255,184,0,0.2)] animate-pulse border-4 border-primary">
+        <AlertDialogContent className="max-w-md rounded-[3rem] p-8 border-none bg-black text-white shadow-[0_0_100px_rgba(255,184,0,0.2)] border-4 border-primary">
           <AlertDialogHeader className="items-center text-center space-y-6">
             <div className="bg-primary p-6 rounded-full shadow-[0_0_30px_rgba(255,184,0,0.5)]">
               <BellRing className="w-16 h-16 text-black animate-bounce" />
