@@ -3,36 +3,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useCart } from "@/components/cart/cart-provider";
-import { useUser, useFirestore, useDoc, useCollection } from "@/firebase";
+import { useUser, useFirestore, useDoc } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { 
   ArrowLeft, 
   Truck, 
-  ShoppingBag, 
-  MessageSquare, 
   MapPin, 
-  Box, 
   Coins, 
-  Ticket, 
   Bike,
-  Plus,
-  Minus,
-  CheckCircle2,
   ChevronRight,
   Loader2,
-  Save,
-  User as UserIcon,
-  Phone,
-  Building,
   X
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, serverTimestamp, doc, setDoc, query, where, getDocs, updateDoc, increment } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -43,7 +30,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const FREE_DELIVERY_THRESHOLD = 400;
-const POINTS_TO_INR = 0.2; // 10 points = 2₹ -> 1 point = 0.2₹
+const POINTS_TO_INR = 0.2; // 1 point = 0.2₹
 
 export default function CheckoutPage() {
   const { items, total, updateQuantity, removeItem, clearCart } = useCart();
@@ -52,7 +39,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
-  const [isOrdered, setIsOrdered] = useState(false);
   
   // Settings and User Data
   const customerRef = useMemo(() => user ? doc(db, "customers", user.uid) : null, [db, user]);
@@ -60,12 +46,9 @@ export default function CheckoutPage() {
   const { data: settingsData } = useDoc(doc(db, "settings", "global"));
 
   // Form states
-  const [instructions, setInstructions] = useState("");
-  const [premiumPacking, setPremiumPacking] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [tip, setTip] = useState<number | null>(null);
-  const [paymentMode, setPaymentMode] = useState<'UPI' | 'COD'>('UPI');
   const [redeemPoints, setRedeemPoints] = useState(false);
   
   // Address states
@@ -108,24 +91,19 @@ export default function CheckoutPage() {
       const q = query(collection(db, "coupons"), where("code", "==", promoCode.toUpperCase()));
       const snap = await getDocs(q);
       if (snap.empty) {
-        toast({ variant: "destructive", title: "Invalid Coupon", description: "This promo code doesn't exist." });
+        toast({ variant: "destructive", title: "Invalid Coupon" });
         setCouponDiscount(0);
         return;
       }
       const coupon = snap.docs[0].data();
       if (total < (coupon.minOrder || 0)) {
-        toast({ variant: "destructive", title: "Min Order Not Met", description: `Minimum order for this coupon is ₹${coupon.minOrder}` });
+        toast({ variant: "destructive", title: "Min Order Not Met", description: `Minimum order is ₹${coupon.minOrder}` });
         setCouponDiscount(0);
         return;
       }
-      let discount = 0;
-      if (coupon.discountType === 'fixed') {
-        discount = coupon.value;
-      } else {
-        discount = (total * coupon.value) / 100;
-      }
+      let discount = coupon.discountType === 'fixed' ? coupon.value : (total * coupon.value) / 100;
       setCouponDiscount(discount);
-      toast({ title: "Coupon Applied!", description: `₹${discount} discount added to bill.` });
+      toast({ title: "Coupon Applied!" });
     } catch (e) {
       toast({ variant: "destructive", title: "Error applying coupon" });
     }
@@ -152,20 +130,24 @@ export default function CheckoutPage() {
     };
 
     try {
-      await addDoc(collection(db, "orders"), orderData);
-      // Award 10 points on every order
+      const docRef = await addDoc(collection(db, "orders"), orderData);
+      
+      // Award 10 points and update stats
+      const pointsToDeduct = redeemPoints ? Math.floor(pointsDiscount / POINTS_TO_INR) : 0;
       await updateDoc(customerRef!, {
-        rewardPoints: increment(10 - (redeemPoints ? Math.floor(pointsDiscount / POINTS_TO_INR) : 0)),
+        rewardPoints: increment(10 - pointsToDeduct),
         totalOrders: increment(1),
         totalSpent: increment(grandTotal)
       });
-      setIsOrdered(true);
+
       clearCart();
+      toast({ title: "Order Placed Successfully!" });
+      router.push(`/orders/${docRef.id}/tracking`);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to place order" });
+      setSliderVal(0);
     } finally {
       setLoading(false);
-      setSliderVal(0);
     }
   };
 
@@ -189,15 +171,6 @@ export default function CheckoutPage() {
       })
       .catch(() => setSavingAddress(false));
   };
-
-  if (isOrdered) return (
-    <div className="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-8 space-y-6 text-center">
-      <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center animate-in zoom-in-50"><CheckCircle2 className="w-12 h-12 text-white" /></div>
-      <h2 className="text-4xl font-black italic uppercase leading-none">Order <span className="text-primary">Success!</span></h2>
-      <p className="text-gray-400 font-bold uppercase text-[10px]">You earned 10 points! Your fresh items are on the way</p>
-      <Button onClick={() => router.push('/')} className="h-16 rounded-[2rem] bg-black text-white px-12 font-black italic uppercase">Go Home</Button>
-    </div>
-  );
 
   return (
     <div className="min-h-screen bg-[#FDFDFD]">

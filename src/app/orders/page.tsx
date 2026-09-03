@@ -9,12 +9,13 @@ import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, where, orderBy } from "firebase/firestore";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export default function OrdersPage() {
   const db = useFirestore();
   const { user } = useUser();
+  const router = useRouter();
 
-  // Query to fetch orders only for the current logged-in customer
   const ordersQuery = useMemo(() => {
     if (!user) return null;
     return query(
@@ -26,7 +27,6 @@ export default function OrdersPage() {
 
   const { data: orders, loading } = useCollection(ordersQuery);
 
-  // Filter ongoing (Processing) vs past orders
   const ongoingOrders = useMemo(() => 
     orders?.filter(o => o.status === "Processing") || [], 
     [orders]
@@ -37,6 +37,10 @@ export default function OrdersPage() {
     [orders]
   );
 
+  const handleOrderClick = (orderId: string) => {
+    router.push(`/orders/${orderId}/tracking`);
+  };
+
   return (
     <>
       <TopBar />
@@ -46,7 +50,7 @@ export default function OrdersPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Syncing Orders...</p>
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Syncing Orders...</p>
           </div>
         ) : orders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 gap-6 text-center">
@@ -65,7 +69,11 @@ export default function OrdersPage() {
               <div className="space-y-4">
                 <h3 className="font-black text-gray-400 text-[10px] uppercase tracking-[0.3em] px-2 italic">Ongoing Delivery</h3>
                 {ongoingOrders.map((order: any) => (
-                  <div key={order.id} className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 space-y-6 shadow-sm">
+                  <div 
+                    key={order.id} 
+                    onClick={() => handleOrderClick(order.id)}
+                    className="bg-primary/5 rounded-[2.5rem] p-6 border border-primary/10 space-y-6 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20">
@@ -103,6 +111,7 @@ export default function OrdersPage() {
                 {historyOrders.map((order: any) => (
                   <div 
                     key={order.id} 
+                    onClick={() => handleOrderClick(order.id)}
                     className="bg-white p-6 rounded-[2.5rem] premium-shadow border border-gray-50 flex justify-between items-center group cursor-pointer hover:border-primary/20 transition-all duration-500 active:scale-[0.98]"
                   >
                     <div className="flex gap-4 items-center">
@@ -135,12 +144,6 @@ export default function OrdersPage() {
                     <ChevronRight className="w-6 h-6 text-gray-200 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                   </div>
                 ))}
-                
-                {historyOrders.length === 0 && ongoingOrders.length > 0 && (
-                  <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-[2.5rem]">
-                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em]">No past history available</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
