@@ -4,7 +4,7 @@
 import { useMemo } from "react";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { TopBar } from "@/components/layout/top-bar";
-import { ShoppingBag, ChevronRight, Clock, Package, Loader2 } from "lucide-react";
+import { ShoppingBag, ChevronRight, Clock, Package, Loader2, AlertCircle } from "lucide-react";
 import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, where, orderBy } from "firebase/firestore";
 import { format } from "date-fns";
@@ -28,12 +28,12 @@ export default function OrdersPage() {
   const { data: orders, loading } = useCollection(ordersQuery);
 
   const ongoingOrders = useMemo(() => 
-    orders?.filter(o => o.status === "Processing") || [], 
+    orders?.filter(o => o.status === "Processing" || o.status === "Pending") || [], 
     [orders]
   );
   
   const historyOrders = useMemo(() => 
-    orders?.filter(o => o.status !== "Processing") || [], 
+    orders?.filter(o => o.status !== "Processing" && o.status !== "Pending") || [], 
     [orders]
   );
 
@@ -77,10 +77,12 @@ export default function OrdersPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-primary/20">
-                          <Clock className="w-6 h-6 text-white" />
+                          {order.status === "Pending" ? <AlertCircle className="w-6 h-6 text-white animate-pulse" /> : <Clock className="w-6 h-6 text-white" />}
                         </div>
                         <div>
-                          <h4 className="font-black text-gray-900 uppercase italic tracking-tighter text-lg">Arriving Soon</h4>
+                          <h4 className="font-black text-gray-900 uppercase italic tracking-tighter text-lg">
+                            {order.status === "Pending" ? "Awaiting Acceptance" : "Arriving Soon"}
+                          </h4>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">ID: {order.id?.slice(-8).toUpperCase()}</p>
                         </div>
                       </div>
@@ -92,11 +94,13 @@ export default function OrdersPage() {
                     
                     <div className="space-y-3">
                       <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span className="text-gray-400 italic">Estimated Arrival</span>
-                        <span className="text-primary">12-15 mins</span>
+                        <span className="text-gray-400 italic">Status</span>
+                        <span className="text-primary">{order.status === "Pending" ? "Waiting for store..." : "12-15 mins"}</span>
                       </div>
                       <div className="w-full h-2 bg-white rounded-full overflow-hidden border border-primary/5 shadow-inner">
-                        <div className="w-[65%] h-full bg-primary animate-pulse rounded-full" />
+                        <div 
+                          className={cn("h-full bg-primary rounded-full transition-all", order.status === "Pending" ? "w-[10%] animate-pulse" : "w-[65%] animate-pulse")} 
+                        />
                       </div>
                     </div>
                   </div>

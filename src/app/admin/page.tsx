@@ -21,14 +21,16 @@ import {
   X,
   FileSpreadsheet,
   Download,
-  Ticket
+  Ticket,
+  BellRing,
+  CheckCircle2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useCollection, useFirestore, useUser, useDoc } from "@/firebase";
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc, writeBatch } from "firebase/firestore";
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, setDoc, writeBatch, onSnapshot, where } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -58,6 +60,14 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -112,6 +122,11 @@ export default function AdminPage() {
   const productFileRef = useRef<HTMLInputElement>(null);
   const bulkFileRef = useRef<HTMLInputElement>(null);
   const categoryFileRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Incoming Order Alert State
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   // Settings state
   const settingsRef = useMemo(() => doc(db, "settings", "global"), [db]);
@@ -128,7 +143,33 @@ export default function AdminPage() {
 
   useEffect(() => {
     setIsClient(true);
+    // Initialize audio alert (Requires user interaction usually, so we rely on first click)
+    audioRef.current = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+    audioRef.current.loop = true;
+    audioRef.current.volume = 1.0;
   }, []);
+
+  // Listen for new orders
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "orders"), where("status", "==", "Pending"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setPendingOrders(orders);
+      
+      if (orders.length > 0) {
+        setIsAlertOpen(true);
+        audioRef.current?.play().catch(() => {
+          console.warn("Audio autoplay blocked. Need interaction.");
+        });
+      } else {
+        setIsAlertOpen(false);
+        audioRef.current?.pause();
+        if (audioRef.current) audioRef.current.currentTime = 0;
+      }
+    });
+    return () => unsubscribe();
+  }, [db, user]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -150,6 +191,12 @@ export default function AdminPage() {
 
   const couponsQuery = useMemo(() => user ? query(collection(db, "coupons"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: coupons } = useCollection(couponsQuery);
+
+  const handleAcceptOrder = (orderId: string) => {
+    updateDoc(doc(db, "orders", orderId), { status: "Processing" })
+      .then(() => toast({ title: "Order Accepted!" }))
+      .catch(err => toast({ variant: "destructive", title: "Error", description: err.message }));
+  };
 
   const [productForm, setProductForm] = useState({
     name: "", mrp: "", price: "", unit: "", category: "", description: "", imageData: "", isTopRated: false,
@@ -339,6 +386,41 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col">
+      {/* Real-time Order Alert Overlay */}
+      <AlertDialog open={isAlertOpen}>
+        <AlertDialogContent className="max-w-md rounded-[3rem] p-8 border-none bg-black text-white shadow-[0_0_100px_rgba(255,184,0,0.2)] animate-pulse border-4 border-primary">
+          <AlertDialogHeader className="items-center text-center space-y-6">
+            <div className="bg-primary p-6 rounded-full shadow-[0_0_30px_rgba(255,184,0,0.5)]">
+              <BellRing className="w-16 h-16 text-black animate-bounce" />
+            </div>
+            <AlertDialogTitle className="text-4xl font-black italic uppercase tracking-tighter">
+              NEW <span className="text-primary">ORDER!</span>
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-400 font-bold uppercase text-xs tracking-widest leading-relaxed">
+              A CUSTOMER HAS JUST PLACED AN ORDER. <br/> PLEASE ACCEPT IT TO START PROCESSING.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 my-8">
+            {pendingOrders.map(order => (
+              <div key={order.id} className="bg-white/10 p-5 rounded-3xl border border-white/5 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase text-primary italic">Order ID: {order.id.slice(-6)}</span>
+                  <span className="text-xl font-black">₹{order.total}</span>
+                </div>
+                <p className="text-xs font-bold text-gray-300 truncate">{order.customerName}</p>
+                <Button 
+                  onClick={() => handleAcceptOrder(order.id)}
+                  className="w-full h-14 rounded-2xl bg-primary text-black font-black uppercase italic tracking-tight gap-2"
+                >
+                  <CheckCircle2 className="w-5 h-5" /> Accept Order
+                </Button>
+              </div>
+            ))}
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <header className="bg-black text-white px-6 py-4 flex items-center justify-between sticky top-0 z-[1000] rounded-b-3xl">
         <div className="flex items-center gap-3">
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>

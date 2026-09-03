@@ -125,7 +125,7 @@ export default function CheckoutPage() {
       total: grandTotal,
       discount: couponDiscount + pointsDiscount,
       address: `${customerData.address}, ${customerData.city}, ${customerData.pincode}`,
-      status: "Processing",
+      status: "Pending", // Initial status for Admin Alert
       createdAt: serverTimestamp(),
     };
 
