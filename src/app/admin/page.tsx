@@ -37,6 +37,7 @@ import { toast } from "@/hooks/use-toast";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import * as XLSX from "xlsx";
+import { cn } from "@/lib/utils";
 import {
   Sheet,
   SheetContent,
@@ -398,7 +399,7 @@ export default function AdminPage() {
         <AlertDialogContent className="max-w-md rounded-[3rem] p-8 border-none bg-black text-white shadow-[0_0_100px_rgba(255,184,0,0.2)] border-4 border-primary">
           <AlertDialogHeader className="items-center text-center space-y-6">
             <div className="bg-primary p-6 rounded-full shadow-[0_0_30px_rgba(255,184,0,0.5)]">
-              <BellRing className="w-16 h-16 text-black animate-bounce" />
+              <BellRing className="w-16 h-16 text-black" />
             </div>
             <AlertDialogTitle className="text-4xl font-black italic uppercase tracking-tighter">
               NEW <span className="text-primary">ORDER!</span>
