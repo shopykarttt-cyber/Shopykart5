@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -26,6 +25,17 @@ const TrackingMap = dynamic(() => import('@/components/tracking/TrackingMap'), {
   ssr: false,
   loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded-[2.5rem]" />
 });
+
+const formatAddress = (addr: any) => {
+  if (!addr) return "No address found";
+  if (typeof addr === 'string') return addr;
+  const parts = [
+    addr.street || addr.detailedAddress,
+    addr.city,
+    addr.pincode
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "Invalid address";
+};
 
 export default function TrackingPage() {
   const params = useParams();
@@ -120,7 +130,7 @@ export default function TrackingPage() {
                    <div className="bg-primary/10 p-2 rounded-xl"><MapPin className="w-4 h-4 text-primary" /></div>
                    <div className="max-w-[200px]">
                       <p className="text-[8px] font-black text-gray-400 uppercase">Delivery Location</p>
-                      <p className="text-[10px] font-bold text-gray-800 truncate">{order.address}</p>
+                      <p className="text-[10px] font-bold text-gray-800 truncate">{formatAddress(order.address)}</p>
                    </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300" />

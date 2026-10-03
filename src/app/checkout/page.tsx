@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -31,6 +30,25 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const FREE_DELIVERY_THRESHOLD = 400;
 const POINTS_TO_INR = 0.2; // 1 point = 0.2₹
+
+const formatAddressString = (customerData: any) => {
+  if (!customerData) return "No address found";
+  const addr = customerData.address;
+  if (!addr) return "No address found";
+  
+  // If it's the detailed string from our form
+  if (typeof addr === 'string') {
+    return `${addr}, ${customerData.city || ''}, ${customerData.pincode || ''}`;
+  }
+  
+  // If it's a legacy object
+  const parts = [
+    addr.street || addr.detailedAddress,
+    customerData.city || addr.city,
+    customerData.pincode || addr.pincode
+  ].filter(Boolean);
+  return parts.join(", ");
+};
 
 export default function CheckoutPage() {
   const { items, total, updateQuantity, removeItem, clearCart } = useCart();
@@ -80,7 +98,7 @@ export default function CheckoutPage() {
         pincode: customerData.pincode || "",
         state: customerData.state || "",
         city: customerData.city || "",
-        detailedAddress: customerData.address || ""
+        detailedAddress: typeof customerData.address === 'string' ? customerData.address : (customerData.address?.street || customerData.address?.detailedAddress || "")
       });
     }
   }, [customerData]);
@@ -124,7 +142,7 @@ export default function CheckoutPage() {
       items: items.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity })),
       total: grandTotal,
       discount: couponDiscount + pointsDiscount,
-      address: `${customerData.address}, ${customerData.city}, ${customerData.pincode}`,
+      address: formatAddressString(customerData),
       status: "Pending", // Initial status for Admin Alert
       createdAt: serverTimestamp(),
     };
@@ -201,7 +219,7 @@ export default function CheckoutPage() {
             <div className="bg-black/40 p-3 rounded-2xl"><MapPin className="w-6 h-6 text-[#FFB800] fill-[#FFB800]" /></div>
             <div className="flex-1 overflow-hidden">
               <p className="text-[10px] font-black uppercase italic tracking-tighter text-[#FFB800]">Deliver To</p>
-              <p className="text-sm font-bold truncate">{customerData?.address ? `${customerData.address}, ${customerData.city}` : "No address found"}</p>
+              <p className="text-sm font-bold truncate">{customerData?.address ? formatAddressString(customerData) : "No address found"}</p>
             </div>
           </div>
           <Button variant="ghost" onClick={() => setIsAddressSheetOpen(true)} className="bg-white/10 text-white rounded-xl text-[10px] font-black uppercase">Change</Button>

@@ -113,6 +113,18 @@ const optimizeImage = (file: File, maxWidth = 800, quality = 0.7): Promise<strin
   });
 };
 
+const formatAddress = (addr: any) => {
+  if (!addr) return "No address found";
+  if (typeof addr === 'string') return addr;
+  const parts = [
+    addr.street || addr.detailedAddress,
+    addr.city,
+    addr.state,
+    addr.pincode
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "Invalid address object";
+};
+
 export default function AdminPage() {
   const router = useRouter();
   const db = useFirestore();
@@ -524,7 +536,7 @@ export default function AdminPage() {
                       
                       <div className="space-y-1">
                         <h4 className="text-lg font-black">{order.customerName}</h4>
-                        <p className="text-xs text-gray-500 font-medium leading-relaxed">{order.address}</p>
+                        <p className="text-xs text-gray-500 font-medium leading-relaxed">{formatAddress(order.address)}</p>
                       </div>
 
                       <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
