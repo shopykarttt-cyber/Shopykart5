@@ -22,7 +22,10 @@ import {
   Download,
   Ticket,
   BellRing,
-  CheckCircle2
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  MoreVertical
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -66,6 +69,12 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const SALES_DATA = [
   { day: "Sun", sales: 4000 },
@@ -141,7 +150,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setIsClient(true);
-    // Initialize audio alert (Requires user interaction usually, so we rely on first click)
+    // Initialize audio alert (Requires interaction)
     audioRef.current = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
     audioRef.current.loop = true;
     audioRef.current.volume = 1.0;
@@ -158,7 +167,7 @@ export default function AdminPage() {
       if (orders.length > 0) {
         setIsAlertOpen(true);
         audioRef.current?.play().catch(() => {
-          console.warn("Audio autoplay blocked. Need interaction.");
+          console.warn("Audio autoplay blocked.");
         });
       } else {
         setIsAlertOpen(false);
@@ -190,9 +199,9 @@ export default function AdminPage() {
   const couponsQuery = useMemo(() => user ? query(collection(db, "coupons"), orderBy("createdAt", "desc")) : null, [db, user]);
   const { data: coupons } = useCollection(couponsQuery);
 
-  const handleAcceptOrder = (orderId: string) => {
-    updateDoc(doc(db, "orders", orderId), { status: "Processing" })
-      .then(() => toast({ title: "Order Accepted!" }))
+  const handleUpdateOrderStatus = (orderId: string, newStatus: string) => {
+    updateDoc(doc(db, "orders", orderId), { status: newStatus })
+      .then(() => toast({ title: `Order ${newStatus}!` }))
       .catch(err => toast({ variant: "destructive", title: "Error", description: err.message }));
   };
 
@@ -408,7 +417,7 @@ export default function AdminPage() {
                 </div>
                 <p className="text-xs font-bold text-gray-300 truncate">{order.customerName}</p>
                 <Button 
-                  onClick={() => handleAcceptOrder(order.id)}
+                  onClick={() => handleUpdateOrderStatus(order.id, "Processing")}
                   className="w-full h-14 rounded-2xl bg-primary text-black font-black uppercase italic tracking-tight gap-2"
                 >
                   <CheckCircle2 className="w-5 h-5" /> Accept Order
@@ -491,6 +500,83 @@ export default function AdminPage() {
           </div>
         )}
 
+        {view === "orders" && (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-black italic uppercase">LIVE ORDERS</h2>
+            <div className="grid gap-4">
+              {orders?.map((order: any) => (
+                <Card key={order.id} className="p-6 rounded-[2rem] bg-white shadow-lg border-none overflow-hidden relative group">
+                  <div className="flex flex-col md:flex-row justify-between gap-6">
+                    <div className="space-y-4 flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest",
+                          order.status === 'Pending' ? 'bg-orange-100 text-orange-600' :
+                          order.status === 'Processing' ? 'bg-blue-100 text-blue-600' :
+                          order.status === 'Shipped' ? 'bg-purple-100 text-purple-600' :
+                          'bg-green-100 text-green-600'
+                        )}>
+                          {order.status}
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-400">ID: {order.id.slice(-6).toUpperCase()}</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-black">{order.customerName}</h4>
+                        <p className="text-xs text-gray-500 font-medium leading-relaxed">{order.address}</p>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
+                        {order.items?.map((item: any, i: number) => (
+                          <div key={i} className="flex justify-between text-xs">
+                            <span className="text-gray-600 font-bold">{item.quantity}x {item.name}</span>
+                            <span className="font-black text-gray-900">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                        <div className="h-px bg-gray-200 my-2" />
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-sm font-black italic uppercase">Grand Total</span>
+                          <span className="text-xl font-black text-primary">₹{order.total}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col justify-between items-end gap-4">
+                      <div className="bg-gray-50 p-4 rounded-2xl flex flex-col items-center justify-center">
+                        <Clock className="w-5 h-5 text-gray-400 mb-1" />
+                        <span className="text-[8px] font-black text-gray-400 uppercase">Placed At</span>
+                        <span className="text-xs font-bold text-gray-900">{order.createdAt?.toDate ? order.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}</span>
+                      </div>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button className="rounded-xl h-12 bg-black text-white px-6 gap-2">
+                            Update Status <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="rounded-xl border-none shadow-2xl z-[1002]">
+                          <DropdownMenuItem onClick={() => handleUpdateOrderStatus(order.id, 'Processing')} className="font-bold py-3">Mark Processing</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateOrderStatus(order.id, 'Shipped')} className="font-bold py-3">Mark Shipped</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateOrderStatus(order.id, 'Delivered')} className="font-bold py-3">Mark Delivered</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateOrderStatus(order.id, 'Cancelled')} className="font-bold py-3 text-red-500">Cancel Order</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+              {orders?.length === 0 && (
+                <div className="py-32 text-center space-y-4">
+                  <div className="bg-gray-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+                    <ShoppingBag className="w-10 h-10 text-gray-300" />
+                  </div>
+                  <p className="text-xs font-black text-gray-300 uppercase tracking-widest">No orders yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {view === "products" && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -517,29 +603,70 @@ export default function AdminPage() {
                   </SheetTrigger>
                   <SheetContent side="bottom" className="h-[95vh] rounded-t-[3rem] bg-white p-0 z-[1001]">
                     <ScrollArea className="h-full px-8 py-8">
-                      <SheetHeader className="mb-6"><SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle></SheetHeader>
-                      <div className="space-y-6 pb-20 max-w-2xl mx-auto">
+                      <SheetHeader className="mb-6">
+                        <SheetTitle className="text-2xl font-black uppercase italic">{editingProductId ? "Edit Product" : "Add Product"}</SheetTitle>
+                      </SheetHeader>
+                      <div className="space-y-8 pb-20 max-w-2xl mx-auto">
                         <div onClick={() => productFileRef.current?.click()} className="w-full h-48 rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer overflow-hidden relative group">
                           {productForm.imageData ? <img src={productForm.imageData} alt="Product Preview" className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-gray-300" />}
                           <input type="file" ref={productFileRef} onChange={async (e) => { const opt = await optimizeImage(e.target.files![0]); setProductForm(p => ({...p, imageData: opt})); }} className="hidden" accept="image/*" />
                         </div>
-                        <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                          <Input type="number" placeholder="Default Sale Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                        
+                        <div className="space-y-4">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Basic Details</Label>
+                          <Input placeholder="Product Name *" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input type="number" placeholder="MRP (₹) *" value={productForm.mrp} onChange={e => setProductForm({...productForm, mrp: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                            <Input type="number" placeholder="Default Sale Price (₹) *" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
+                              <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
+                              <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
+                                {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                            <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
+                          </div>
+                          <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
+                            <Label className="font-bold">Top Rated Product</Label>
+                            <Switch checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
+                          </div>
                         </div>
-                        <Select value={productForm.category} onValueChange={val => setProductForm({...productForm, category: val})}>
-                          <SelectTrigger className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold"><SelectValue placeholder="Select Category *" /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-none shadow-2xl z-[1002]">
-                            {categories?.map((cat: any) => <SelectItem key={cat.id} value={cat.name} className="py-3 font-bold">{cat.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                        <Input placeholder="Unit (e.g. 1kg)" value={productForm.unit} onChange={e => setProductForm({...productForm, unit: e.target.value})} className="h-14 rounded-2xl bg-gray-50 border-none px-6 font-bold" />
-                        <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
-                          <Label className="font-bold">Top Rated</Label>
-                          <Switch checked={productForm.isTopRated} onCheckedChange={val => setProductForm({...productForm, isTopRated: val})} />
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Bulk Pricing Tiers (Optional)</Label>
+                            <Button variant="ghost" onClick={() => setProductForm({...productForm, pricingTiers: [...productForm.pricingTiers, { minQty: 0, maxQty: null, price: 0 }]})} className="text-primary font-black text-xs uppercase gap-1">
+                              <Plus className="w-3 h-3" /> Add Tier
+                            </Button>
+                          </div>
+                          <div className="space-y-3">
+                            {productForm.pricingTiers.map((tier, idx) => (
+                              <div key={idx} className="flex gap-3 items-center bg-gray-50 p-4 rounded-2xl border border-gray-100 animate-in fade-in">
+                                <div className="flex-1 space-y-1">
+                                  <span className="text-[8px] font-black uppercase text-gray-400">Min Qty</span>
+                                  <Input type="number" value={tier.minQty} onChange={e => {
+                                    const newTiers = [...productForm.pricingTiers];
+                                    newTiers[idx].minQty = Number(e.target.value);
+                                    setProductForm({...productForm, pricingTiers: newTiers});
+                                  }} className="h-10 rounded-xl bg-white border-none" />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                  <span className="text-[8px] font-black uppercase text-gray-400">Tier Price (₹)</span>
+                                  <Input type="number" value={tier.price} onChange={e => {
+                                    const newTiers = [...productForm.pricingTiers];
+                                    newTiers[idx].price = Number(e.target.value);
+                                    setProductForm({...productForm, pricingTiers: newTiers});
+                                  }} className="h-10 rounded-xl bg-white border-none" />
+                                </div>
+                                <button onClick={() => setProductForm({...productForm, pricingTiers: productForm.pricingTiers.filter((_, i) => i !== idx)})} className="text-red-500 mt-5 p-2"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl" onClick={handleAddProduct}>
+
+                        <Button className="w-full h-16 rounded-[2rem] bg-primary text-lg font-black italic uppercase shadow-xl mt-4" onClick={handleAddProduct}>
                           {editingProductId ? "Update Changes" : "Publish Live"}
                         </Button>
                       </div>
@@ -550,12 +677,33 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products?.map((p: any) => (
-                <Card key={p.id} className="p-6 rounded-[2rem] bg-white flex items-center justify-between shadow-lg relative">
+                <Card key={p.id} className="p-6 rounded-[2rem] bg-white flex items-center justify-between shadow-lg relative border-none">
                   <div className="flex items-center gap-4">
                     <img src={p.imageUrl} alt={p.name} className="w-16 h-16 rounded-2xl object-cover" />
-                    <div><h4 className="font-bold">{p.name}</h4><p className="text-sm font-black text-primary">₹{p.price}</p></div>
+                    <div>
+                      <h4 className="font-bold">{p.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-black text-primary">₹{p.price}</p>
+                        {p.pricingTiers?.length > 0 && <span className="text-[8px] font-black uppercase bg-orange-100 text-orange-600 px-2 py-0.5 rounded-md">Bulk Enabled</span>}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
+                    <button onClick={() => {
+                      setEditingProductId(p.id);
+                      setProductForm({
+                        name: p.name,
+                        mrp: String(p.mrp),
+                        price: String(p.price),
+                        unit: p.unit,
+                        category: p.category,
+                        description: p.description || "",
+                        imageData: p.imageUrl,
+                        isTopRated: p.isTopRated || false,
+                        pricingTiers: p.pricingTiers || []
+                      });
+                      setIsProductSheetOpen(true);
+                    }} className="text-gray-400 hover:text-primary p-2"><Edit3 className="w-4 h-4" /></button>
                     <button onClick={() => deleteDoc(doc(db, "products", p.id))} className="text-gray-200 hover:text-red-500 p-2"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </Card>
@@ -587,7 +735,7 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {categories?.map((cat: any) => (
-                <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg group">
+                <Card key={cat.id} className="p-5 rounded-[2.5rem] bg-white flex flex-col items-center relative text-center shadow-lg group border-none">
                   <img src={cat.imageUrl} alt={cat.name} className="w-20 h-20 object-cover rounded-3xl mb-2" />
                   <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
                   <button onClick={() => deleteDoc(doc(db, "categories", cat.id))} className="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></button>
@@ -643,7 +791,7 @@ export default function AdminPage() {
         {view === "settings" && (
           <div className="space-y-6">
             <h2 className="text-2xl font-black italic uppercase">GLOBAL SETTINGS</h2>
-            <Card className="p-8 rounded-[2.5rem] bg-white shadow-lg space-y-8">
+            <Card className="p-8 rounded-[2.5rem] bg-white shadow-lg space-y-8 border-none">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-black italic uppercase text-lg">Additional Bill Charges</h3>
